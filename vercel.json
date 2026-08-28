@@ -6,7 +6,6 @@
   "outputDirectory": "apps/web/dist/client",
   "functions": {
     "api/[...path].js": {
-      "runtime": "nodejs22.x",
       "maxDuration": 10
     }
   }
