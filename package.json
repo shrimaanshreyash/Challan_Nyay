@@ -1,0 +1,16 @@
+{
+  "name": "challan-nyay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "build": "npm run build --prefix apps/web",
+    "test": "npm test --prefix apps/api && npm run test:sites --prefix apps/web"
+  },
+  "dependencies": {
+    "fastify": "5.12.1"
+  }
+}

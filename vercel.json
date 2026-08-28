@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "npm ci && cd apps/web && npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "apps/web/dist/client",
+  "functions": {
+    "api/[...path].js": {
+      "runtime": "nodejs22.x",
+      "maxDuration": 10
+    }
+  }
+}

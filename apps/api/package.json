@@ -9,6 +9,6 @@
     "test": "node --test"
   },
   "dependencies": {
-    "fastify": "5.6.1"
+    "fastify": "5.12.1"
   }
 }
