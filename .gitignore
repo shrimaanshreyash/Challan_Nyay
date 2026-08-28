@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+/package-lock.json
+
+# Builds and coverage
+dist/
+build/
+coverage/
+
+# Local runtime data
+apps/api/data/*.db
+apps/api/data/*.db-shm
+apps/api/data/*.db-wal
+*.sqlite
+*.sqlite3
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Browser and test artefacts
+output/
+.playwright-cli/
+playwright-report/
+test-results/
+
+# Local design/research capture history
+DESIGN/**/*.png
+DESIGN/qa/
+RESEARCH/**/*.png
+
+# Logs and editor files
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
