@@ -6,6 +6,10 @@ Challan Nyay is an independent, nationwide-by-design public-service prototype bu
 
 It uses only synthetic identities, vehicles, challans, evidence and payments. It is not affiliated with or endorsed by any government authority.
 
+**[Open the live Vercel preview](https://challan-nyay-eefl4efxv-shreyas-projects-154a7bcd.vercel.app)**
+
+The preview runs the complete frontend and Fastify API. Its synthetic serverless demo state may reset when Vercel starts a new function instance.
+
 ![Challan Nyay landing page](docs/images/challan-nyay-landing.png)
 
 ## The problem
