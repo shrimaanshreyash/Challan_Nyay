@@ -126,7 +126,23 @@ async function request(path, options = {}) {
     ...options,
     headers: { "content-type": "application/json", ...options.headers },
   });
-  const body = await response.json();
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    await response.text();
+    throw new Error(
+      "The challan service is temporarily unavailable. Refresh and try again.",
+    );
+  }
+
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    throw new Error(
+      "The challan service returned an incomplete response. Refresh and try again.",
+    );
+  }
   if (!response.ok)
     throw new Error(body.message || "The request could not be completed.");
   return body;

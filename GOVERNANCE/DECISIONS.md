@@ -118,3 +118,11 @@ Record material choices here. Statuses: `Proposed`, `Accepted`, `Superseded`.
 - Decision: Do not include chatbot UI or functionality in the first-round build.
 - Why: it adds scope without strengthening the working citizen-to-reviewer loop that judges can test today.
 - Consequence: reconsider only after shortlisting, with a bounded useful job, accessibility review, factual-source controls and a non-AI fallback.
+
+## D-017 — Explicit Vercel API gateway rewrite
+
+- Status: Accepted
+- Date: 29 August 2026
+- Decision: Route `/api/:path*` through one concrete `api/index.js` Vercel Function, carry the original nested path in an internal rewrite parameter, and restore it before handing the request to Fastify.
+- Why: Vite's local proxy hid a production-only routing gap; a built catch-all function did not receive nested requests on the deployed Vite project.
+- Consequence: production routing is contract-tested, and the client converts non-JSON infrastructure responses into a safe citizen-facing service error instead of exposing parser text.

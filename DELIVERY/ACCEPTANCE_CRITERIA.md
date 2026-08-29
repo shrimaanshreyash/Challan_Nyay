@@ -107,3 +107,7 @@ Given any seeded case, when its detail page opens, then the allegation location,
 ## AC-27 — navigation position and high contrast
 
 Given a citizen moves between top-level views, when the next view renders, then it starts at the top. When high contrast is enabled, the landing lookup, selected tab, demo badge, form values, helper copy and primary action remain readable with visible focus and state cues.
+
+## AC-28 — public API gateway
+
+Given the public Vercel URL, when the landing page requests any nested `/api/*` route, then the request reaches the Fastify handler, returns JSON with a correlation ID, and never exposes an HTML or plain-text parser error to the citizen.
