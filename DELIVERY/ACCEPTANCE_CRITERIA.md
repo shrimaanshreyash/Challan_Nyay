@@ -111,3 +111,7 @@ Given a citizen moves between top-level views, when the next view renders, then 
 ## AC-28 — public API gateway
 
 Given the public Vercel URL, when the landing page requests any nested `/api/*` route, then the request reaches the Fastify handler, returns JSON with a correlation ID, and never exposes an HTML or plain-text parser error to the citizen.
+
+## AC-29 — serverless-safe human check
+
+Given the challenge and lookup requests execute on different serverless instances, when the citizen submits the correct answer before expiry, then the signed challenge validates and the synthetic case opens without relying on process-local memory.

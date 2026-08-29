@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import { randomInt, randomUUID } from "node:crypto";
+import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import { ChallanRepository } from "./database.js";
 import { decideCase, DEMO_ACCOUNTS, payCase, submitContest } from "./domain.js";
 
@@ -14,10 +14,37 @@ function requireIdempotencyKey(request) {
   return String(key);
 }
 
-export function buildApp({ repository = new ChallanRepository(), logger = true } = {}) {
+const DEMO_CHALLENGE_SECRET = "challan-nyay-synthetic-demo-challenge-v1";
+
+function signChallenge(payload, secret) {
+  const { answer, ...publicPayload } = payload;
+  const encoded = Buffer.from(JSON.stringify(publicPayload)).toString("base64url");
+  const signature = createHmac("sha256", secret).update(`${encoded}:${answer}`).digest("base64url");
+  return `${encoded}.${signature}`;
+}
+
+function verifyChallenge(token, submittedAnswer, secret) {
+  const [encoded, signature, extra] = String(token || "").split(".");
+  if (!encoded || !signature || extra) return false;
+  const expected = createHmac("sha256", secret).update(`${encoded}:${Number(submittedAnswer)}`).digest("base64url");
+  const receivedBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (receivedBuffer.length !== expectedBuffer.length || !timingSafeEqual(receivedBuffer, expectedBuffer)) return false;
+  try {
+    const challenge = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+    return Number(challenge.expiresAt) >= Date.now();
+  } catch {
+    return false;
+  }
+}
+
+export function buildApp({
+  repository = new ChallanRepository(),
+  logger = true,
+  challengeSecret = process.env.CHALLAN_NYAY_CHALLENGE_SECRET || DEMO_CHALLENGE_SECRET,
+} = {}) {
   const app = Fastify({ logger, requestIdHeader: "x-correlation-id", genReqId: () => randomUUID() });
   app.decorate("repository", repository);
-  const lookupChallenges = new Map();
 
   app.addHook("onSend", async (request, reply, payload) => {
     reply.header("x-correlation-id", request.id);
@@ -30,9 +57,9 @@ export function buildApp({ repository = new ChallanRepository(), logger = true }
   app.get("/api/lookup/challenge", async () => {
     const left = randomInt(2, 10);
     const right = randomInt(2, 10);
-    const id = randomUUID();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-    lookupChallenges.set(id, { answer: left + right, expiresAt });
+    const expiresAtMs = Date.now() + 5 * 60 * 1000;
+    const expiresAt = new Date(expiresAtMs).toISOString();
+    const id = signChallenge({ answer: left + right, expiresAt: expiresAtMs, nonce: randomUUID() }, challengeSecret);
     return { challenge: { id, prompt: `${left} + ${right}`, expiresAt, accessibilityLabel: `What is ${left} plus ${right}?` } };
   });
 
@@ -56,11 +83,9 @@ export function buildApp({ repository = new ChallanRepository(), logger = true }
     if (!["CHALLAN", "VEHICLE", "DL"].includes(lookupType) || !query) {
       return reply.code(422).send({ code: "LOOKUP_INPUT_REQUIRED", message: "Choose a lookup type and enter the synthetic identifier." });
     }
-    const challenge = lookupChallenges.get(String(input.challengeId || ""));
-    if (!challenge || new Date(challenge.expiresAt).getTime() < Date.now() || Number(input.challengeAnswer) !== challenge.answer) {
+    if (!verifyChallenge(input.challengeId, input.challengeAnswer, challengeSecret)) {
       return reply.code(422).send({ code: "HUMAN_CHECK_FAILED", message: "The human-check answer is incorrect or expired. Refresh it and try again." });
     }
-    lookupChallenges.delete(String(input.challengeId));
     const allCases = repository.listCases();
     const account = DEMO_ACCOUNTS.find((item) => item.dlNumber === query);
     const caseRecord = lookupType === "CHALLAN"

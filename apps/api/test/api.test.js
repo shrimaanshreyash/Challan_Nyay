@@ -66,6 +66,29 @@ test("synthetic lookup requires a valid server challenge", async (t) => {
   assert.equal(valid.json().match.synthetic, true);
 });
 
+test("signed lookup challenge survives a serverless instance change", async (t) => {
+  const challengeApp = createTestApp();
+  const lookupApp = createTestApp();
+  t.after(() => Promise.all([challengeApp.close(), lookupApp.close()]));
+  const challengeResponse = await challengeApp.inject({ method: "GET", url: "/api/lookup/challenge" });
+  const challenge = challengeResponse.json().challenge;
+  const [left, , right] = challenge.prompt.split(" ");
+
+  const lookup = await lookupApp.inject({
+    method: "POST",
+    url: "/api/cases/lookup",
+    payload: {
+      lookupType: "VEHICLE",
+      query: "TS09CD5678",
+      challengeId: challenge.id,
+      challengeAnswer: Number(left) + Number(right),
+    },
+  });
+
+  assert.equal(lookup.statusCode, 200);
+  assert.equal(lookup.json().match.caseId, DEMO_CASE_ID);
+});
+
 test("demo portfolios expose multiple accounts, vehicles and challans", async (t) => {
   const app = createTestApp();
   t.after(() => app.close());

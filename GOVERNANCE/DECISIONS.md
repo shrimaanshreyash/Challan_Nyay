@@ -126,3 +126,11 @@ Record material choices here. Statuses: `Proposed`, `Accepted`, `Superseded`.
 - Decision: Route `/api/:path*` through one concrete `api/index.js` Vercel Function, carry the original nested path in an internal rewrite parameter, and restore it before handing the request to Fastify.
 - Why: Vite's local proxy hid a production-only routing gap; a built catch-all function did not receive nested requests on the deployed Vite project.
 - Consequence: production routing is contract-tested, and the client converts non-JSON infrastructure responses into a safe citizen-facing service error instead of exposing parser text.
+
+## D-018 — Stateless signed demo challenge
+
+- Status: Accepted
+- Date: 29 August 2026
+- Decision: Carry the short-lived arithmetic answer in a signed, opaque challenge token rather than process memory. Use an environment secret when configured and a clearly scoped synthetic-demo fallback for this public prototype.
+- Why: Vercel may serve the challenge and lookup from different isolated function instances, so process-local challenge state cannot reliably validate the next request.
+- Consequence: the accessible human check works across serverless instances. It remains demo friction rather than a production anti-abuse control; replay prevention, rate limiting and managed bot protection stay mandatory before any real integration.
