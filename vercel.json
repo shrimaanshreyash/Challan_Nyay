@@ -6,7 +6,7 @@
   "outputDirectory": "apps/web/dist/client",
   "rewrites": [
     {
-      "source": "^/api/(.*)$",
+      "source": "/api/(.*)",
       "destination": "/api/index?path=$1"
     }
   ],
