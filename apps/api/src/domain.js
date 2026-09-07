@@ -764,6 +764,15 @@ export function payCase(caseRecord, input, now = new Date()) {
     error.statusCode = 422;
     throw error;
   }
+  const paymentApp = paymentMethod === "DEMO_UPI"
+    ? String(input.paymentApp || "OTHER_UPI").toUpperCase()
+    : null;
+  if (paymentApp && !["GOOGLE_PAY", "PHONEPE", "PAYTM", "OTHER_UPI"].includes(paymentApp)) {
+    const error = new Error("Choose one of the synthetic UPI app options.");
+    error.code = "INVALID_PAYMENT_APP";
+    error.statusCode = 422;
+    throw error;
+  }
   if (!input.confirmationAccepted) {
     const error = new Error("Confirm that no real payment or personal financial data is being used.");
     error.code = "PAYMENT_CONFIRMATION_REQUIRED";
@@ -781,6 +790,7 @@ export function payCase(caseRecord, input, now = new Date()) {
     nextActionOwner: "None — case closed",
     payment: {
       method: paymentMethod,
+      app: paymentApp,
       attemptId: `CN-PAY-${caseSlug}-${caseRecord.version + 1}`,
       providerReference: `DEMO-PGI-${caseRecord.version + 1}`,
       receiptId: `CN-PAY-RCPT-${caseSlug}-${caseRecord.version + 1}`,

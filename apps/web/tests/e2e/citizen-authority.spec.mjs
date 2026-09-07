@@ -276,8 +276,9 @@ test("WhatsApp pay-all handoff reviews and posts every selected challan atomical
   await send(4, { text: "TS09CD5678" });
   await send(5, { command: "VERIFY_LOOKUP" });
   const review = await send(6, { command: "PAY_ALL" });
-  expect(review.responses[0].body).toContain("2 eligible challans");
-  const handoff = await send(7, { command: "CONFIRM_PAY_ALL" });
+  expect(review.responses[0].body).toContain("2 challans");
+  await send(7, { command: "PAYMENT_APP:PHONEPE" });
+  const handoff = await send(8, { command: "CREATE_PAYMENT_HANDOFF" });
   const url = handoff.responses[0].body.match(/https?:\/\/\S+/)?.[0];
   expect(url).toBeTruthy();
 
@@ -285,12 +286,18 @@ test("WhatsApp pay-all handoff reviews and posts every selected challan atomical
   await expect(page.getByRole("heading", { name: "Review 2 challans" })).toBeVisible();
   await expect(page.getByText("Total synthetic amount")).toBeVisible();
   await expect(page.getByText("₹2,000")).toBeVisible();
+  await expect(page.getByRole("radio", { name: /PhonePe/ })).toBeChecked();
   await expect(page.evaluate(() => document.documentElement.scrollWidth)).resolves.toBe(390);
   await expect(page.locator(".app > main")).toHaveAttribute("aria-hidden", "true");
   await expectNoSeriousAccessibilityViolations(page);
   await page.getByRole("checkbox", { name: /synthetic batch payment/ }).check();
   await page.getByRole("button", { name: "Post 2 demo payments" }).click();
   await expect(page.getByRole("heading", { name: "Payment recorded in this demonstration" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download receipt" })).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download receipt" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^CN-PAY-RCPT-.*\.json$/);
 });
 
 test("WhatsApp selected-payment handoff preserves only the citizen's chosen challans", async ({ page, request }) => {
@@ -308,9 +315,11 @@ test("WhatsApp selected-payment handoff preserves only the citizen's chosen chal
   const selection = choices.responses.find((message) => message.type === "list");
   expect(selection.rows.filter((row) => row.id.startsWith("TOGGLE_PAY:"))).toHaveLength(2);
 
-  await send(6, { command: `TOGGLE_PAY:${FLAGSHIP_CASE}` });
+  const selected = await send(6, { command: `TOGGLE_PAY:${FLAGSHIP_CASE}` });
+  expect(selected.responses[0].buttons.map((button) => button.id)).toEqual(["REVIEW_SELECTED", "ADD_MORE", "CLEAR_SELECTION"]);
   await send(7, { command: "REVIEW_SELECTED" });
-  const handoff = await send(8, { command: "CONFIRM_SELECTED_PAY" });
+  await send(8, { command: "PAYMENT_APP:GOOGLE_PAY" });
+  const handoff = await send(9, { command: "CREATE_PAYMENT_HANDOFF" });
   const url = handoff.responses[0].body.match(/https?:\/\/\S+/)?.[0];
   expect(url).toBeTruthy();
 
@@ -318,6 +327,7 @@ test("WhatsApp selected-payment handoff preserves only the citizen's chosen chal
   await expect(page.getByRole("heading", { name: "Review 1 challan" })).toBeVisible();
   await expect(page.locator(".batch-payment-list article")).toHaveCount(1);
   await expect(page.locator(".batch-payment-total strong")).toHaveText("₹1,000");
+  await expect(page.getByRole("radio", { name: /Google Pay/ })).toBeChecked();
   await expect(page.evaluate(() => document.documentElement.scrollWidth)).resolves.toBe(390);
   await expectNoSeriousAccessibilityViolations(page);
 });

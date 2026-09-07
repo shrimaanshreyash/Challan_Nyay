@@ -53,6 +53,19 @@ const DEMO_VALUES = {
 
 const DEFAULT_ACCOUNT_ID = "DEMO-CITIZEN-01";
 
+const SYNTHETIC_PAYMENT_OPTIONS = [
+  { method: "DEMO_UPI", app: "GOOGLE_PAY", label: "Google Pay", note: "Simulated UPI handoff only" },
+  { method: "DEMO_UPI", app: "PHONEPE", label: "PhonePe", note: "Simulated UPI handoff only" },
+  { method: "DEMO_UPI", app: "PAYTM", label: "Paytm", note: "Simulated UPI handoff only" },
+  { method: "DEMO_UPI", app: "OTHER_UPI", label: "Other UPI app", note: "No UPI ID or PIN requested" },
+  { method: "DEMO_NET_BANKING", app: null, label: "Demo net banking", note: "No account or password requested" },
+];
+
+function paymentMethodLabel(payment) {
+  if (payment?.method === "DEMO_NET_BANKING") return "Demo net banking";
+  return SYNTHETIC_PAYMENT_OPTIONS.find((option) => option.app === payment?.app)?.label || "Other UPI app";
+}
+
 const ISSUE_DETAIL_DEFAULTS = {
   WRONG_VEHICLE: { mismatchFields: ["VEHICLE_TYPE", "COLOUR"] },
   ALREADY_PAID: {
@@ -1316,8 +1329,32 @@ function ContestDialog({ caseRecord, initialGround = "WRONG_VEHICLE", onClose, o
   );
 }
 
-function PaymentDialog({ caseRecord, onClose, onPaid }) {
+function PaymentMethodChoices({ name, method, paymentApp, onChange, legend }) {
+  return (
+    <fieldset className="payment-methods">
+      <legend>{legend}</legend>
+      {SYNTHETIC_PAYMENT_OPTIONS.map((option) => {
+        const selected = method === option.method && paymentApp === option.app;
+        return (
+          <label className={selected ? "selected" : ""} key={`${option.method}-${option.app || "none"}`}>
+            <input
+              type="radio"
+              name={name}
+              checked={selected}
+              onChange={() => onChange(option)}
+            />
+            {option.method === "DEMO_UPI" ? <Wallet size={22} /> : <Bank size={22} />}
+            <span><strong>{option.label}</strong><small>{option.note}</small></span>
+          </label>
+        );
+      })}
+    </fieldset>
+  );
+}
+
+function PaymentDialog({ caseRecord, initialPaymentApp = "OTHER_UPI", onClose, onPaid }) {
   const [method, setMethod] = useState("DEMO_UPI");
+  const [paymentApp, setPaymentApp] = useState(initialPaymentApp);
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -1336,6 +1373,7 @@ function PaymentDialog({ caseRecord, onClose, onPaid }) {
           body: JSON.stringify({
             expectedVersion: caseRecord.version,
             paymentMethod: method,
+            ...(method === "DEMO_UPI" ? { paymentApp } : {}),
             confirmationAccepted: accepted,
           }),
         },
@@ -1361,35 +1399,16 @@ function PaymentDialog({ caseRecord, onClose, onPaid }) {
             generation without collecting financial data.
           </p>
         </div>
-        <fieldset className="payment-methods">
-          <legend>Choose a synthetic method</legend>
-          <label className={method === "DEMO_UPI" ? "selected" : ""}>
-            <input
-              type="radio"
-              name="method"
-              checked={method === "DEMO_UPI"}
-              onChange={() => setMethod("DEMO_UPI")}
-            />
-            <CreditCard size={22} />
-            <span>
-              <strong>Demo UPI</strong>
-              <small>No UPI ID or OTP requested</small>
-            </span>
-          </label>
-          <label className={method === "DEMO_NET_BANKING" ? "selected" : ""}>
-            <input
-              type="radio"
-              name="method"
-              checked={method === "DEMO_NET_BANKING"}
-              onChange={() => setMethod("DEMO_NET_BANKING")}
-            />
-            <Bank size={22} />
-            <span>
-              <strong>Demo net banking</strong>
-              <small>No account or password requested</small>
-            </span>
-          </label>
-        </fieldset>
+        <PaymentMethodChoices
+          name="method"
+          method={method}
+          paymentApp={paymentApp}
+          legend="Choose a synthetic payment route"
+          onChange={(option) => {
+            setMethod(option.method);
+            setPaymentApp(option.app);
+          }}
+        />
         <label className="declaration">
           <input
             type="checkbox"
@@ -1424,8 +1443,9 @@ function PaymentDialog({ caseRecord, onClose, onPaid }) {
   );
 }
 
-function BatchPaymentDialog({ cases, onClose, onPaid }) {
+function BatchPaymentDialog({ cases, initialPaymentApp = "OTHER_UPI", onClose, onPaid }) {
   const [method, setMethod] = useState("DEMO_UPI");
+  const [paymentApp, setPaymentApp] = useState(initialPaymentApp);
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -1442,6 +1462,7 @@ function BatchPaymentDialog({ cases, onClose, onPaid }) {
         body: JSON.stringify({
           items: cases.map((item) => ({ caseId: item.id, expectedVersion: item.version })),
           paymentMethod: method,
+          ...(method === "DEMO_UPI" ? { paymentApp } : {}),
           confirmationAccepted: accepted,
         }),
       });
@@ -1471,19 +1492,16 @@ function BatchPaymentDialog({ cases, onClose, onPaid }) {
           ))}
           <div className="batch-payment-total"><span>Total synthetic amount</span><strong>{formatMoney(totalPaise)}</strong></div>
         </div>
-        <fieldset className="payment-methods">
-          <legend>Choose one synthetic method for the batch</legend>
-          <label className={method === "DEMO_UPI" ? "selected" : ""}>
-            <input type="radio" name="batch-method" checked={method === "DEMO_UPI"} onChange={() => setMethod("DEMO_UPI")} />
-            <CreditCard size={22} />
-            <span><strong>Demo UPI</strong><small>No UPI ID or OTP requested</small></span>
-          </label>
-          <label className={method === "DEMO_NET_BANKING" ? "selected" : ""}>
-            <input type="radio" name="batch-method" checked={method === "DEMO_NET_BANKING"} onChange={() => setMethod("DEMO_NET_BANKING")} />
-            <Bank size={22} />
-            <span><strong>Demo net banking</strong><small>No account or password requested</small></span>
-          </label>
-        </fieldset>
+        <PaymentMethodChoices
+          name="batch-method"
+          method={method}
+          paymentApp={paymentApp}
+          legend="Choose one synthetic payment route for the batch"
+          onChange={(option) => {
+            setMethod(option.method);
+            setPaymentApp(option.app);
+          }}
+        />
         <label className="declaration">
           <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} />
           <span>I confirm this is a synthetic batch payment and I am not entering real financial information.</span>
@@ -1829,6 +1847,29 @@ function CitizenCase({ caseRecord, auditCount, onContest, onPay, onBack, backLab
   const closed = decided || paid;
   const contestGround = caseRecord.contest?.ground;
   const tracking = caseRecord.tracking || null;
+  function downloadReceipt() {
+    const receipt = {
+      synthetic: true,
+      service: "Challan Nyay independent prototype",
+      receiptId: caseRecord.payment.receiptId,
+      caseId: caseRecord.id,
+      vehicle: caseRecord.registeredVehicle.registration,
+      amountPaise: caseRecord.payment.amountPaise,
+      paymentRoute: paymentMethodLabel(caseRecord.payment),
+      providerStatus: caseRecord.payment.providerStatus,
+      ledgerStatus: caseRecord.payment.ledgerStatus,
+      providerReference: caseRecord.payment.providerReference,
+      paidAt: caseRecord.payment.paidAt,
+      notice: "Synthetic demonstration receipt. No real payment occurred.",
+    };
+    const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${caseRecord.payment.receiptId}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
   async function respondToReviewer(event) {
     event.preventDefault();
     setResponding(true);
@@ -2071,11 +2112,15 @@ function CitizenCase({ caseRecord, auditCount, onContest, onPay, onBack, backLab
                   Provider: {caseRecord.payment.providerStatus} · Challan
                   ledger: {caseRecord.payment.ledgerStatus}
                 </p>
+                <p>Payment route: {paymentMethodLabel(caseRecord.payment)} · synthetic only</p>
                 <small>
                   Attempt {caseRecord.payment.attemptId} ·{" "}
                   {formatDate(caseRecord.payment.paidAt, true)}
                 </small>
               </div>
+              <button className="button secondary compact-button receipt-download" type="button" onClick={downloadReceipt}>
+                <DownloadSimple size={17} /> Download receipt
+              </button>
             </section>
           )}
           <section className="panel timeline-panel">
@@ -2710,6 +2755,7 @@ export function App() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [batchPaymentOpen, setBatchPaymentOpen] = useState(false);
   const [batchPaymentCases, setBatchPaymentCases] = useState([]);
+  const [handoffPaymentApp, setHandoffPaymentApp] = useState("OTHER_UPI");
   const [accountOpen, setAccountOpen] = useState(false);
   const [accountActive, setAccountActive] = useState(
     () => typeof window !== "undefined" && (
@@ -2766,6 +2812,7 @@ export function App() {
           if (record) {
             setCaseReturnSection("gateway");
             setSection("case");
+            setHandoffPaymentApp(result.scope?.paymentApp || "OTHER_UPI");
             if (result.purpose === "PAY_CASE") setPaymentOpen(true);
             if (["PAY_ALL_ELIGIBLE", "PAY_SELECTED"].includes(result.purpose)) {
               const selected = await Promise.all((result.scope?.caseIds || []).map(async (caseId) => {
@@ -3092,6 +3139,7 @@ export function App() {
       {paymentOpen && (
         <PaymentDialog
           caseRecord={caseRecord}
+          initialPaymentApp={handoffPaymentApp}
           onClose={() => setPaymentOpen(false)}
           onPaid={updateCase}
         />
@@ -3099,6 +3147,7 @@ export function App() {
       {batchPaymentOpen && batchPaymentCases.length > 0 && (
         <BatchPaymentDialog
           cases={batchPaymentCases}
+          initialPaymentApp={handoffPaymentApp}
           onClose={() => {
             setBatchPaymentOpen(false);
             setBatchPaymentCases([]);

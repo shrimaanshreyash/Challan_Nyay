@@ -48,16 +48,16 @@ for (const path of required) record(`required:${path}`, existsSync(join(root, pa
 const readme = text("README.md");
 const app = text("apps/web/src/App.jsx");
 const architecture = text("ARCHITECTURE/SYSTEM_ARCHITECTURE.md");
-record("public deployment claim is paused", readme.includes("Public deployment:** temporarily paused"), "README does not claim an unverified live release");
+record("public deployment URL is explicit", readme.includes("https://challan-nyay.vercel.app/"), "README identifies the active public release");
 record("independent prototype disclosure is visible", app.includes("synthetic data only | not a government website"), "citizen shell contains the disclosure");
 record("real-payment boundary is visible", app.includes("No real payment will occur."), "payment dialog states its mock boundary");
 record("architecture names the implemented web stack", architecture.includes("React 19 + Vite 6") && !architecture.includes("Next.js App Router"), "architecture matches the source tree");
-record("managed database proof remains pending", readme.includes("live managed database has not yet been provisioned or verified"), "local proof is not presented as deployed durability");
+record("managed database boundary is explicit", readme.includes("public Vercel build selects the managed PostgreSQL adapter"), "README distinguishes local SQLite from deployed PostgreSQL");
 record(
   "WhatsApp proof keeps the live-delivery boundary explicit",
-  readme.includes("Outbound delivered; automated conversation pending")
-    && readme.includes("no automated inbound/outbound citizen conversation is claimed"),
-  "user-visible outbound delivery is distinguished from an automated citizen conversation",
+  readme.includes("Live developer pilot + automated contract proof")
+    && readme.includes("production WhatsApp number, native WhatsApp payment and unrestricted recipients are not claimed"),
+  "developer-pilot delivery is distinguished from a production public channel",
 );
 
 const assetBudgets = [

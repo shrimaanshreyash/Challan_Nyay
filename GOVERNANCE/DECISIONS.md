@@ -343,3 +343,11 @@ Record material choices here. Statuses: `Proposed`, `Accepted`, `Superseded`.
 - Decision: When a dialog opens, move focus inside it, make every obscured application sibling inert and `aria-hidden`, wrap Tab/Shift+Tab within the dialog and restore the prior semantic state on close.
 - Why: A visual overlay alone still exposes the complete case page to keyboard and screen-reader navigation, creating two competing tasks and misleading automated contrast results.
 - Consequence: Account, grievance, single-payment and batch-payment dialogs share one accessible interaction boundary on mobile and desktop.
+
+## D-045 — WhatsApp payment intent chooses a mock route before web handoff
+
+- Status: Accepted
+- Date: 7 September 2026
+- Decision: After a citizen selects one, several or all eligible challans in WhatsApp, show an explicit review checkpoint and a choice of familiar UPI-app labels before creating the one-time signed web handoff. The selected route is carried into the web review, persisted on the synthetic payment and printed on the downloadable receipt.
+- Why: Reopening the selection list after every choice looked like a loop and did not give the citizen a clear next action. A recognizable route choice makes the prototype easy to explain without collecting a UPI ID, PIN, OTP or financial credential.
+- Consequence: Google Pay, PhonePe, Paytm and Other UPI are interface labels for a mock adapter only. No native app is invoked, no Razorpay credential is used, and no real payment occurs in this competition build.

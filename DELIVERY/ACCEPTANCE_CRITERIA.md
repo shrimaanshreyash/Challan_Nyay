@@ -283,3 +283,7 @@ Given any account, grievance or payment dialog is open, then focus enters the di
 ## AC-71 — lookup-specific evidence and return context
 
 Given a citizen opens a guest vehicle, challan-number or driving-licence result, then the case shows evidence belonging to that seeded lookup rather than landing artwork or another case. Back returns to the protected lookup even when a demo account is active; cases opened from the account dashboard or challan list return to their respective source.
+
+## AC-72 — assisted payment selection and receipt continuity
+
+Given a verified WhatsApp citizen selects one, several or all eligible challans, then each toggle leads to a visible Review and pay checkpoint instead of reopening the same list. Before handoff, the citizen chooses a clearly synthetic UPI-app route; the one-time web review opens with that route selected, commits through the same atomic payment service, and exposes a downloadable synthetic receipt containing the route, provider and challan-ledger states.

@@ -1074,6 +1074,14 @@ figcaption {
 .payment-receipt small {
   color: var(--muted);
 }
+.payment-receipt > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.payment-receipt .receipt-download {
+  align-self: center;
+  flex: 0 0 auto;
+}
 .loading-state {
   min-height: 520px;
   display: flex;
@@ -2375,6 +2383,13 @@ footer span {
 }
 
 @media (max-width: 540px) {
+  .payment-receipt {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .payment-receipt .receipt-download {
+    width: 100%;
+  }
   .batch-payment-list article,
   .batch-payment-total {
     align-items: flex-start;

@@ -145,6 +145,7 @@ export const paymentSchema = {
     properties: {
       expectedVersion,
       paymentMethod: { type: "string", enum: ["DEMO_UPI", "DEMO_NET_BANKING"] },
+      paymentApp: { type: "string", enum: ["GOOGLE_PAY", "PHONEPE", "PAYTM", "OTHER_UPI"] },
       confirmationAccepted: { type: "boolean" },
     },
   },
@@ -170,6 +171,7 @@ export const paymentBatchSchema = {
         },
       },
       paymentMethod: { type: "string", enum: ["DEMO_UPI", "DEMO_NET_BANKING"] },
+      paymentApp: { type: "string", enum: ["GOOGLE_PAY", "PHONEPE", "PAYTM", "OTHER_UPI"] },
       confirmationAccepted: { type: "boolean" },
     },
   },

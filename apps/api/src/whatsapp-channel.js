@@ -258,6 +258,46 @@ function paymentSelectionList(cases, selectedCaseIds, locale) {
   );
 }
 
+function selectedPaymentActions(cases, selectedCaseIds, locale) {
+  const selected = cases.filter((item) => selectedCaseIds.includes(item.id));
+  const total = selected.reduce((sum, item) => sum + item.allegation.amountPaise, 0);
+  const body = locale === "hi"
+    ? `${selected.length} चालान चुने गए · ${rupees(total)}\nअब भुगतान की समीक्षा करें या एक और चालान जोड़ें।`
+    : `${selected.length} challan${selected.length === 1 ? "" : "s"} selected · ${rupees(total)}\nReview payment now or add another challan.`;
+  return buttons(body, [
+    ["REVIEW_SELECTED", locale === "hi" ? "समीक्षा और भुगतान" : "Review & pay"],
+    ["ADD_MORE", locale === "hi" ? "एक और जोड़ें" : "Add another"],
+    ["CLEAR_SELECTION", locale === "hi" ? "चयन हटाएँ" : "Clear selection"],
+  ]);
+}
+
+const PAYMENT_APPS = [
+  ["GOOGLE_PAY", "Google Pay"],
+  ["PHONEPE", "PhonePe"],
+  ["PAYTM", "Paytm"],
+  ["OTHER_UPI", "Other UPI app"],
+];
+
+function paymentAppLabel(code) {
+  return PAYMENT_APPS.find(([value]) => value === code)?.[1] || "UPI app";
+}
+
+function paymentAppList(cases, locale) {
+  const total = cases.reduce((sum, item) => sum + item.allegation.amountPaise, 0);
+  const body = locale === "hi"
+    ? `${cases.length} चालान · ${rupees(total)}\nडेमो भुगतान के लिए UPI ऐप चुनें। कोई असली ऐप नहीं खुलेगा और कोई पैसा नहीं कटेगा।`
+    : `${cases.length} challan${cases.length === 1 ? "" : "s"} · ${rupees(total)}\nChoose a UPI app for this demo payment. No real app opens and no money moves.`;
+  return list(
+    body,
+    locale === "hi" ? "UPI ऐप चुनें" : "Choose UPI app",
+    PAYMENT_APPS.map(([code, label]) => [
+      `PAYMENT_APP:${code}`,
+      label,
+      locale === "hi" ? "सिंथेटिक भुगतान डेमो" : "Synthetic payment demonstration",
+    ]),
+  );
+}
+
 function paymentHistory(cases, locale) {
   const paid = cases.filter((item) => item.payment);
   if (!paid.length) {
@@ -593,7 +633,17 @@ export function createWhatsAppChannel({
       const selectedCaseIds = [...selected];
       return {
         next: withConversation(conversation, { step: "PAYMENT_SELECTION", context: { selectedPaymentCaseIds: selectedCaseIds } }),
-        responses: [paymentSelectionList(eligible, selectedCaseIds, locale)],
+        responses: [selectedCaseIds.length
+          ? selectedPaymentActions(eligible, selectedCaseIds, locale)
+          : paymentSelectionList(eligible, [], locale)],
+      };
+    }
+
+    if (command === "CLEAR_SELECTION" && conversation.context.verified) {
+      const eligible = eligibleCases(allCases, conversation.context);
+      return {
+        next: withConversation(conversation, { step: "PAYMENT_SELECTION", context: { selectedPaymentCaseIds: [] } }),
+        responses: [paymentSelectionList(eligible, [], locale)],
       };
     }
 
@@ -611,25 +661,12 @@ export function createWhatsAppChannel({
       if (!selected.length) {
         return { next: withConversation(conversation, { step: "PAYMENT_SELECTION" }), responses: [paymentSelectionList(eligible, [], locale)] };
       }
-      const total = selected.reduce((sum, item) => sum + item.allegation.amountPaise, 0);
-      const summary = selected.map((item) => `${item.registeredVehicle.registration} · ${rupees(item.allegation.amountPaise)}`).join("\n");
       return {
-        next: withConversation(conversation, { step: "CONFIRM_SELECTED_PAYMENT" }),
-        responses: [buttons(
-          `${summary}\nTotal: ${rupees(total)}\nReview on the protected mock-payment page?`,
-          [["CONFIRM_SELECTED_PAY", locale === "hi" ? "जारी रखें" : "Continue"], ["ADD_MORE", locale === "hi" ? "चयन बदलें" : "Change selection"], ["MAIN_MENU", locale === "hi" ? "रद्द करें" : "Cancel"]],
-        )],
-      };
-    }
-
-    if (command === "CONFIRM_SELECTED_PAY" && conversation.step === "CONFIRM_SELECTED_PAYMENT") {
-      const eligibleIds = new Set(eligibleCases(allCases, conversation.context).map((item) => item.id));
-      const caseIds = (conversation.context.selectedPaymentCaseIds || []).filter((id) => eligibleIds.has(id));
-      if (!caseIds.length) return { next: withConversation(conversation, { step: "PAYMENT_SELECTION" }), responses: [text(copy.invalid)] };
-      const handoff = await makeHandoff(conversation, senderKey, "PAY_SELECTED", { caseIds });
-      return {
-        next: withConversation(conversation, { step: "HANDOFF_CREATED" }),
-        responses: [text(`${copy.handoff}\n${handoff.url}`), menu(locale, true)],
+        next: withConversation(conversation, {
+          step: "CHOOSE_PAYMENT_APP",
+          context: { paymentPurpose: "PAY_SELECTED", paymentCaseIds: selected.map((item) => item.id) },
+        }),
+        responses: [paymentAppList(selected, locale)],
       };
     }
 
@@ -638,23 +675,12 @@ export function createWhatsAppChannel({
       if (!eligible.length) {
         return { next: withConversation(conversation, { step: "ACCOUNT_MENU" }), responses: [text(locale === "hi" ? "कोई भुगतान योग्य सिंथेटिक चालान नहीं है।" : "There are no eligible synthetic challans to pay.")] };
       }
-      const total = eligible.reduce((sum, item) => sum + item.allegation.amountPaise, 0);
       return {
-        next: withConversation(conversation, { step: "CONFIRM_PAY_ALL", context: { payAllCaseIds: eligible.map((item) => item.id) } }),
-        responses: [buttons(
-          `${eligible.length} eligible challans · ${rupees(total)}\nContinue to review them on the protected mock-payment page?`,
-          [["CONFIRM_PAY_ALL", locale === "hi" ? "जारी रखें" : "Continue"], ["VIEW_CHALLANS", locale === "hi" ? "चालान देखें" : "Review cases"]],
-        )],
-      };
-    }
-
-    if (command === "CONFIRM_PAY_ALL" && conversation.step === "CONFIRM_PAY_ALL") {
-      const caseIds = conversation.context.payAllCaseIds || [];
-      if (!caseIds.length) return { next: withConversation(conversation, { step: "MAIN_MENU" }), responses: [text(copy.invalid)] };
-      const handoff = await makeHandoff(conversation, senderKey, "PAY_ALL_ELIGIBLE", { caseIds });
-      return {
-        next: withConversation(conversation, { step: "HANDOFF_CREATED" }),
-        responses: [text(`${copy.handoff}\n${handoff.url}`), menu(locale, true)],
+        next: withConversation(conversation, {
+          step: "CHOOSE_PAYMENT_APP",
+          context: { paymentPurpose: "PAY_ALL_ELIGIBLE", paymentCaseIds: eligible.map((item) => item.id) },
+        }),
+        responses: [paymentAppList(eligible, locale)],
       };
     }
 
@@ -685,9 +711,10 @@ export function createWhatsAppChannel({
       const caseRecord = conversationCases(allCases, conversation.context).find((item) => item.id === caseId);
       if (!caseRecord?.payment) return { next: withConversation(conversation, { step: "PAYMENT_HISTORY" }), responses: [text(copy.invalid)] };
       const payment = caseRecord.payment;
+      const paymentRoute = payment.method === "DEMO_NET_BANKING" ? "Demo net banking" : paymentAppLabel(payment.app);
       const body = locale === "hi"
-        ? `${payment.receiptId}\nराशि: ${rupees(payment.amountPaise)}\nप्रदाता: ${payment.providerStatus}\nलेजर: ${payment.ledgerStatus}\nसंदर्भ: ${payment.providerReference}`
-        : `${payment.receiptId}\nAmount: ${rupees(payment.amountPaise)}\nProvider: ${payment.providerStatus}\nLedger: ${payment.ledgerStatus}\nReference: ${payment.providerReference}`;
+        ? `${payment.receiptId}\nराशि: ${rupees(payment.amountPaise)}\nभुगतान माध्यम: ${paymentRoute}\nप्रदाता: ${payment.providerStatus}\nलेजर: ${payment.ledgerStatus}\nसंदर्भ: ${payment.providerReference}`
+        : `${payment.receiptId}\nAmount: ${rupees(payment.amountPaise)}\nPayment route: ${paymentRoute}\nProvider: ${payment.providerStatus}\nLedger: ${payment.ledgerStatus}\nReference: ${payment.providerReference}`;
       return {
         next: withConversation(conversation, { step: "PAYMENT_RECEIPT", selectedCaseId: caseId }),
         responses: [buttons(body, [[`TRACK:${caseId}`, locale === "hi" ? "स्थिति" : "Track case"], ["PAYMENT_HISTORY", locale === "hi" ? "सभी रसीदें" : "All receipts"], ["MAIN_MENU", locale === "hi" ? "मेनू" : "Menu"]])],
@@ -709,23 +736,59 @@ export function createWhatsAppChannel({
         return { next: withConversation(conversation, { step: "CASE_DETAIL" }), responses: [text(copy.invalid)] };
       }
       return {
-        next: withConversation(conversation, { step: "CONFIRM_PAYMENT", selectedCaseId: caseId }),
+        next: withConversation(conversation, {
+          step: "CHOOSE_PAYMENT_APP",
+          selectedCaseId: caseId,
+          context: { paymentPurpose: "PAY_CASE", paymentCaseIds: [caseId] },
+        }),
+        responses: [paymentAppList([caseRecord], locale)],
+      };
+    }
+
+    if (command.startsWith("PAYMENT_APP:") && conversation.step === "CHOOSE_PAYMENT_APP") {
+      const paymentApp = command.slice("PAYMENT_APP:".length);
+      if (!PAYMENT_APPS.some(([code]) => code === paymentApp)) {
+        return { next: withConversation(conversation, { step: "CHOOSE_PAYMENT_APP" }), responses: [text(copy.invalid)] };
+      }
+      const paymentCases = conversationCases(allCases, conversation.context)
+        .filter((item) => (conversation.context.paymentCaseIds || []).includes(item.id));
+      if (!paymentCases.length) {
+        return { next: withConversation(conversation, { step: "MAIN_MENU" }), responses: [text(copy.invalid)] };
+      }
+      const total = paymentCases.reduce((sum, item) => sum + item.allegation.amountPaise, 0);
+      return {
+        next: withConversation(conversation, { step: "CONFIRM_PAYMENT_HANDOFF", context: { paymentApp } }),
         responses: [buttons(
-          `${caseRecord.id}\nAmount: ${rupees(caseRecord.allegation.amountPaise)}\nContinue to the protected mock-payment page?`,
-          [[`CONFIRM_PAY:${caseId}`, locale === "hi" ? "जारी रखें" : "Continue"], [`CASE:${caseId}`, locale === "hi" ? "वापस" : "Go back"]],
+          `${paymentAppLabel(paymentApp)} · ${rupees(total)}\nNo real UPI app will open and no money will move. Continue to the protected demo-payment page?`,
+          [["CREATE_PAYMENT_HANDOFF", locale === "hi" ? "भुगतान खोलें" : "Open payment"], ["CHANGE_PAYMENT_APP", locale === "hi" ? "ऐप बदलें" : "Change app"], ["MAIN_MENU", locale === "hi" ? "रद्द करें" : "Cancel"]],
         )],
       };
     }
 
-    if (command.startsWith("CONFIRM_PAY:") && conversation.step === "CONFIRM_PAYMENT") {
-      const caseId = command.slice("CONFIRM_PAY:".length);
-      if (caseId !== conversation.selectedCaseId) {
+    if (command === "CHANGE_PAYMENT_APP" && conversation.context.verified) {
+      const paymentCases = conversationCases(allCases, conversation.context)
+        .filter((item) => (conversation.context.paymentCaseIds || []).includes(item.id));
+      return {
+        next: withConversation(conversation, { step: "CHOOSE_PAYMENT_APP" }),
+        responses: paymentCases.length ? [paymentAppList(paymentCases, locale)] : [text(copy.invalid)],
+      };
+    }
+
+    if (command === "CREATE_PAYMENT_HANDOFF" && conversation.step === "CONFIRM_PAYMENT_HANDOFF") {
+      const purpose = conversation.context.paymentPurpose;
+      const caseIds = conversation.context.paymentCaseIds || [];
+      const paymentApp = conversation.context.paymentApp;
+      if (!["PAY_CASE", "PAY_SELECTED", "PAY_ALL_ELIGIBLE"].includes(purpose) || !caseIds.length || !paymentApp) {
         return { next: withConversation(conversation, { step: "MAIN_MENU" }), responses: [text(copy.invalid)] };
       }
-      const handoff = await makeHandoff(conversation, senderKey, "PAY_CASE", { caseIds: [caseId] });
+      const handoff = await makeHandoff(conversation, senderKey, purpose, {
+        caseIds,
+        paymentMethod: "DEMO_UPI",
+        paymentApp,
+      });
       return {
         next: withConversation(conversation, { step: "HANDOFF_CREATED" }),
-        responses: [text(`${copy.handoff}\n${handoff.url}`), buttons(copy.menu, [[`TRACK:${caseId}`, locale === "hi" ? "स्थिति देखें" : "Track case"], ["MAIN_MENU", locale === "hi" ? "मेनू" : "Menu"]])],
+        responses: [text(`${copy.handoff}\n${handoff.url}`), menu(locale, true)],
       };
     }
 

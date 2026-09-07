@@ -529,6 +529,21 @@ test("authority queue uses aggregate counts and compact server-side work items",
   assert.equal(detail.json().task.evidence[0].synthetic, true);
 });
 
+test("authority session creates PostgreSQL-compatible UUID work batches", async (t) => {
+  const repository = new ChallanRepository(":memory:");
+  let createdBatchId = null;
+  const createWorkBatch = repository.createWorkBatch.bind(repository);
+  repository.createWorkBatch = (batch) => {
+    createdBatchId = batch.id;
+    return createWorkBatch(batch);
+  };
+  const app = buildApp({ repository, logger: false });
+  t.after(() => app.close());
+  const citizenToken = await startCitizen(app);
+  await startReviewer(app, citizenToken);
+  assert.match(createdBatchId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+});
+
 test("two reviewers cannot claim the same active case", async (t) => {
   const app = createTestApp();
   t.after(() => app.close());
@@ -580,7 +595,7 @@ test("mock payment posts once without collecting financial details", async (t) =
     method: "POST",
     url: `/api/cases/${DEMO_CASE_ID}/payment-attempts`,
     headers: { "idempotency-key": "payment-demo-001" },
-    payload: { paymentMethod: "DEMO_UPI", confirmationAccepted: true },
+    payload: { paymentMethod: "DEMO_UPI", paymentApp: "GOOGLE_PAY", confirmationAccepted: true },
   });
   const first = await app.inject(paymentRequest);
   const replay = await app.inject(paymentRequest);
@@ -589,6 +604,7 @@ test("mock payment posts once without collecting financial details", async (t) =
   assert.equal(replay.json().idempotentReplay, true);
   assert.equal(first.json().case.state, "PAID");
   assert.equal(first.json().payment.ledgerStatus, "POSTED");
+  assert.equal(first.json().payment.app, "GOOGLE_PAY");
   assert.equal("accountNumber" in first.json().payment, false);
   const after = await app.inject(authorized(citizenToken, { method: "GET", url: `/api/cases/${DEMO_CASE_ID}` }));
   assert.equal(after.json().audit.filter((event) => event.eventType === "PAYMENT_POSTED").length, 1);
@@ -761,8 +777,10 @@ test("signed WhatsApp fixture is deterministic, idempotent and shares the citize
   assert.match(verified.json().responses[0].body, /1 vehicle · 4 challans/);
 
   const payAll = await sendWhatsApp(app, { id: "wamid.005a", command: "PAY_ALL" });
-  assert.match(payAll.json().responses[0].body, /2 eligible challans/);
-  const payAllHandoff = await sendWhatsApp(app, { id: "wamid.005b", command: "CONFIRM_PAY_ALL" });
+  assert.match(payAll.json().responses[0].body, /2 challans/);
+  const payAllMethod = await sendWhatsApp(app, { id: "wamid.005b", command: "PAYMENT_APP:PHONEPE" });
+  assert.match(payAllMethod.json().responses[0].body, /PhonePe/);
+  const payAllHandoff = await sendWhatsApp(app, { id: "wamid.005c", command: "CREATE_PAYMENT_HANDOFF" });
   assert.match(payAllHandoff.json().responses[0].body, /channelHandoff=/);
 
   const vehicles = await sendWhatsApp(app, { id: "wamid.006", command: "VIEW_VEHICLES" });
@@ -830,22 +848,30 @@ test("WhatsApp preserves requested actions and supports one, several or all paym
   assert.equal(selectable.length, 2);
   assert.ok(selection.rows.some((row) => row.id === "PAY_ALL"));
 
-  await sendWhatsApp(app, { id: "wamid.selection.06", command: selectable[0].id });
-  const secondSelection = await sendWhatsApp(app, { id: "wamid.selection.07", command: selectable[1].id });
-  assert.ok(secondSelection.json().responses[0].rows.some((row) => row.id === "REVIEW_SELECTED"));
-  const review = await sendWhatsApp(app, { id: "wamid.selection.08", command: "REVIEW_SELECTED" });
-  assert.match(review.json().responses[0].body, /Total: ₹2,000/);
-  const handoff = await sendWhatsApp(app, { id: "wamid.selection.09", command: "CONFIRM_SELECTED_PAY" });
+  const firstSelection = await sendWhatsApp(app, { id: "wamid.selection.06", command: selectable[0].id });
+  assert.deepEqual(firstSelection.json().responses[0].buttons.map((button) => button.id), ["REVIEW_SELECTED", "ADD_MORE", "CLEAR_SELECTION"]);
+  const addMore = await sendWhatsApp(app, { id: "wamid.selection.07", command: "ADD_MORE" });
+  const secondChoice = addMore.json().responses[0].rows.find((row) => row.id === selectable[1].id);
+  assert.ok(secondChoice);
+  const secondSelection = await sendWhatsApp(app, { id: "wamid.selection.08", command: secondChoice.id });
+  assert.match(secondSelection.json().responses[0].body, /2 challans selected/);
+  const review = await sendWhatsApp(app, { id: "wamid.selection.09", command: "REVIEW_SELECTED" });
+  assert.match(review.json().responses[0].body, /2 challans · ₹2,000/);
+  const method = await sendWhatsApp(app, { id: "wamid.selection.10", command: "PAYMENT_APP:GOOGLE_PAY" });
+  assert.match(method.json().responses[0].body, /Google Pay · ₹2,000/);
+  const handoff = await sendWhatsApp(app, { id: "wamid.selection.11", command: "CREATE_PAYMENT_HANDOFF" });
   const url = handoff.json().responses[0].body.match(/https?:\/\/\S+/)?.[0];
   const token = new URL(url).searchParams.get("channelHandoff");
   const exchange = await app.inject({ method: "POST", url: "/api/channels/whatsapp/handoffs/exchange", payload: { token } });
   assert.equal(exchange.json().purpose, "PAY_SELECTED");
   assert.equal(exchange.json().scope.caseIds.length, 2);
+  assert.equal(exchange.json().scope.paymentMethod, "DEMO_UPI");
+  assert.equal(exchange.json().scope.paymentApp, "GOOGLE_PAY");
 
-  const history = await sendWhatsApp(app, { id: "wamid.selection.10", command: "PAYMENT_HISTORY" });
+  const history = await sendWhatsApp(app, { id: "wamid.selection.12", command: "PAYMENT_HISTORY" });
   const receiptRows = history.json().responses[0].rows;
   assert.ok(receiptRows.some((row) => row.id === "RECEIPT:CN-DEMO-PAID-LANE"));
-  const receipt = await sendWhatsApp(app, { id: "wamid.selection.11", command: "RECEIPT:CN-DEMO-PAID-LANE" });
+  const receipt = await sendWhatsApp(app, { id: "wamid.selection.13", command: "RECEIPT:CN-DEMO-PAID-LANE" });
   assert.match(receipt.json().responses[0].body, /CN-PAY-RCPT-PAID-318/);
 
   const trackingSender = "918811112222";

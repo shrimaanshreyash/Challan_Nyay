@@ -6,7 +6,7 @@ Challan Nyay is an independent, nationwide-by-design public-service prototype bu
 
 It uses only synthetic identities, vehicles, challans, evidence and payments. It is not affiliated with or endorsed by any government authority.
 
-**Public deployment:** temporarily paused while the round-two build is being hardened. The final public URL will be re-enabled only after persistent-database and clean-session verification passes.
+**Public deployment:** [https://challan-nyay.vercel.app/](https://challan-nyay.vercel.app/) — backed by the managed PostgreSQL adapter and visibly labelled as a synthetic independent prototype.
 
 ![Challan Nyay landing page](docs/images/challan-nyay-landing.png)
 
@@ -38,9 +38,9 @@ The public entry is usable as a guest. A synthetic account is optional for peopl
 
 | Field | Demo value |
 |---|---|
-| Vehicle number | `TS09CD5678` |
-| Challan number | `CN-DEMO-WRONG-VEHICLE` |
-| Driving licence | `DL-DEMO-2026` |
+| Vehicle number | `UP16NX2041` |
+| Challan number | `CN-GUEST-CHALLAN` |
+| Driving licence | `DL-GUEST-2026` |
 | Human check | Answer the visible arithmetic prompt |
 
 Open the wrong-vehicle case, inspect the fixed-camera evidence and map, raise a grievance, enter the reviewer demo, issue a reasoned decision and return to the citizen timeline.
@@ -49,8 +49,9 @@ Open the wrong-vehicle case, inspect the fixed-camera evidence and map, raise a 
 
 Choose **Create demo account**, keep the prefilled synthetic mobile identifier, select **Send demo OTP**, and enter `246810`.
 
-- **Amit Rao:** three vehicles and six challans across action-required, paid, under-review, quashed and rejected states.
-- **Neha Logistics:** two vehicles and three challans demonstrating a small fleet account.
+- **Amit Rao:** three vehicles and ten challans across action-required, paid, under-review, quashed and rejected states.
+- **Neha Logistics:** two vehicles and six challans demonstrating a small fleet account.
+- **Farah Nair:** one vehicle and four challans including open, review and closed outcomes.
 
 The selected account, page, language, text size and contrast preference persist locally between page changes and reloads.
 
@@ -61,7 +62,7 @@ The hackathon build is a modular monolith with explicit adapter boundaries. The 
 ```mermaid
 flowchart LR
     Citizen[Citizen web] --> API[Fastify API]
-    WhatsApp[WhatsApp signed fixture] --> API
+    WhatsApp[WhatsApp Cloud API + signed fixtures] --> API
     Reviewer[Reviewer demo] --> API
     API --> Case[Case and contest domain]
     API --> Review[Review and decision domain]
@@ -92,17 +93,17 @@ Important architecture choices:
 |---|---|---|
 | Protected guest lookup | Implemented | Server-issued expiring arithmetic check and documented synthetic identifiers |
 | Multi-account and multi-vehicle experience | Implemented | Three profiles, six vehicles and twenty account-linked challans, plus three distinct guest lookup cases |
-| Evidence, plate and event location | Implemented locally | Shared evidence passport with capture source, immutable-original/hash, crop lineage, registry comparison and attributed OpenStreetMap context |
-| Guided grievance and receipt | Implemented locally | Six server-owned issue contracts, versioned draft recovery, bounded evidence requests and contract-safe reasoned outcomes |
-| Authority operations foundation | Implemented locally | Aggregate queue summary, compact paginated worklist, lease-based case claim and human reasoned decision; batch/supervisor UI remains in progress |
-| Event-backed citizen tracking | Implemented locally | Account progress and case timelines are projected from persisted, versioned workflow events shared with authority actions |
-| Mobile, contrast and low-data access | Implemented locally | Compact 320/390 px controls, preserved native scrolling, optimized WebP media and explicit evidence/map loading |
-| Payment demonstration | Implemented as mock | No card, UPI ID, bank account, password or real OTP is collected |
-| SQLite/PostgreSQL repository boundary | Implemented locally | PostgreSQL migrations and atomic adapter exist; a live managed database has not yet been provisioned or verified |
+| Evidence, plate and event location | Deployed | Shared evidence passport with capture source, immutable-original/hash, crop lineage, registry comparison and attributed OpenStreetMap context |
+| Guided grievance and receipt | Deployed | Six server-owned issue contracts, versioned draft recovery, bounded evidence requests and contract-safe reasoned outcomes |
+| Authority operations foundation | Deployed synthetic workspace | Aggregate queue summary, compact paginated worklist, bounded reviewer batches, lease-based claim and human reasoned decision |
+| Event-backed citizen tracking | Deployed | Account progress and case timelines are projected from persisted, versioned workflow events shared with authority actions |
+| Mobile, contrast and low-data access | Deployed | Compact 320/390 px controls, preserved native scrolling, optimized WebP media and explicit evidence/map loading |
+| Payment demonstration | Deployed mock | One/few/all selection, explicit mock UPI-app choice, atomic posting and downloadable synthetic receipts; no card, UPI ID, bank account, password or real OTP is collected |
+| SQLite/PostgreSQL repository boundary | Deployed | SQLite remains the local/test adapter; the public Vercel build selects the managed PostgreSQL adapter |
 | Government, VAHAN and state-RTA connections | Mocked boundary | No undocumented or live government API is called |
 | English, Hindi and Telugu | Entry-flow pilot | Case and reviewer content still needs reviewed full-flow localization |
 | Real identity, uploads and payments | Planned | Requires authorized providers, contracts and production security controls |
-| WhatsApp citizen channel | Outbound delivered; automated conversation pending | English/Hindi deterministic flow over the shared case store, durable inbox/outbox and delivery receipts, vehicle/evidence/plate/location messages, tracking, grievance guidance, payment history and one/few/all signed web handoffs. The developer resource authenticated and a labelled outbound message was visibly received by the configured test recipient; no automated inbound/outbound citizen conversation is claimed until the public callback and persisted delivery lifecycle are verified |
+| WhatsApp citizen channel | Live developer pilot + automated contract proof | The public Meta callback answers live inbound `Hi` with English/Hindi selection. Deterministic tests cover protected lookup, same-store case/media/location views, tracking, grievance guidance, receipts, and one/few/all payment handoffs with mock UPI-app selection. A production WhatsApp number, native WhatsApp payment and unrestricted recipients are not claimed |
 
 ## Technology
 
@@ -153,12 +154,12 @@ npm run build
 
 Current locally verified baseline:
 
-- API tests: **47 passed, 1 skipped** (the skipped test requires `CHALLAN_NYAY_TEST_DATABASE_URL` pointing to a real PostgreSQL instance)
+- API tests: **49 passed, 1 skipped** (the skipped test requires `CHALLAN_NYAY_TEST_DATABASE_URL` pointing to a separate PostgreSQL integration target)
 - static-hosting tests: **4/4 passed**
 - real-browser Playwright journeys: **12/12 passed** (citizen-to-authority decision/reset loop, browser Back/Forward routing, mobile low-data/high contrast, all three guest lookup routes, guest return-context integrity, distinct authority entry and direct route, authority evidence sizing, multi-profile persistence, serious/critical axe checks, WhatsApp-to-web grievance continuity, atomic pay-all continuity, and selected-challan payment continuity)
 - production web build: **passed**
 - SQLite atomic mutation, idempotency, stale-version, versioned draft recovery, issue-safe reviewer outcomes, file-backed restart isolation, concurrent-decision conflict and persisted channel replay: **passed**
-- live PostgreSQL migration, cross-instance durability and deployed-browser checks: **pending**
+- live PostgreSQL startup and public citizen/account/browser checks: **passed**; a deliberate multi-region/cross-instance stress exercise remains outside this submission gate
 
 These checks do not claim formal WCAG 2.2 AA certification. Full assistive-technology coverage, complete automated-rule coverage, slow-network and deployed HTTPS checks remain release acceptance work.
 

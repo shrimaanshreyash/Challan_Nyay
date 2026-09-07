@@ -401,7 +401,9 @@ export function buildApp({
       jurisdiction: "DEMO-NATIONWIDE",
       expiresAt: new Date(expiresAtMs).toISOString(),
     });
-    const batchId = `DEMO-BATCH-${sessionId}`;
+    // PostgreSQL stores work-batch identifiers as UUIDs. Keep the human-facing
+    // "demo" label in the UI, not in the database primary key.
+    const batchId = randomUUID();
     await repository.createWorkBatch({
       id: batchId,
       workspaceSessionId: citizenSession.id,
