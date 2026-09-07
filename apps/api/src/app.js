@@ -137,6 +137,7 @@ function verifyChallenge(token, submittedAnswer, secret) {
 export function buildApp({
   repository = new ChallanRepository(),
   logger = true,
+  initializeRepositoryOnReady = true,
   challengeSecret = configuredSecret("CHALLAN_NYAY_CHALLENGE_SECRET", DEMO_CHALLENGE_SECRET),
   sessionSecret = configuredSecret("CHALLAN_NYAY_SESSION_SECRET", DEMO_SESSION_SECRET),
   whatsappAppSecret = configuredSecret("CHALLAN_NYAY_WHATSAPP_APP_SECRET", DEMO_WHATSAPP_APP_SECRET),
@@ -183,9 +184,11 @@ export function buildApp({
     fetchImpl: whatsappFetch,
   });
 
-  app.addHook("onReady", async () => {
-    await repository.initialize?.();
-  });
+  if (initializeRepositoryOnReady) {
+    app.addHook("onReady", async () => {
+      await repository.initialize?.();
+    });
+  }
 
   app.addHook("onSend", async (request, reply, payload) => {
     reply.header("x-correlation-id", request.id);

@@ -7,7 +7,10 @@ const repository = createConfiguredRepository({
   sqlitePath: ":memory:",
   requirePostgres: process.env.VERCEL === "1" || process.env.CHALLAN_NYAY_REQUIRE_POSTGRES === "true",
 });
-const app = buildApp({ repository, logger: true });
+// Keep the serverless gateway responsive for health and webhook-verification
+// requests. PostgreSQL-backed operations initialize lazily inside the
+// repository, where Vercel's request duration can cover a Neon cold start.
+const app = buildApp({ repository, logger: true, initializeRepositoryOnReady: false });
 const ready = app.ready();
 
 export function restoreForwardedApiPath(request) {
