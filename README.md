@@ -6,9 +6,7 @@ Challan Nyay is an independent, nationwide-by-design public-service prototype bu
 
 It uses only synthetic identities, vehicles, challans, evidence and payments. It is not affiliated with or endorsed by any government authority.
 
-**[Open the live deployment](https://challan-nyay.vercel.app)**
-
-The preview runs the complete frontend and Fastify API. Its synthetic serverless demo state may reset when Vercel starts a new function instance.
+**Public deployment:** temporarily paused while the round-two build is being hardened. The final public URL will be re-enabled only after persistent-database and clean-session verification passes.
 
 ![Challan Nyay landing page](docs/images/challan-nyay-landing.png)
 
@@ -63,13 +61,16 @@ The hackathon build is a modular monolith with explicit adapter boundaries. The 
 ```mermaid
 flowchart LR
     Citizen[Citizen web] --> API[Fastify API]
+    WhatsApp[WhatsApp signed fixture] --> API
     Reviewer[Reviewer demo] --> API
     API --> Case[Case and contest domain]
     API --> Review[Review and decision domain]
     API --> Payment[Mock payment ledger]
-    Case --> DB[(Local SQLite)]
+    Case --> DB[(Repository contract)]
     Review --> DB
     Payment --> DB
+    DB --> Local[(SQLite: local/test)]
+    DB --> Production[(PostgreSQL: deployment target)]
     API --> Audit[Append-only audit events]
     API --> Adapters[Mock authority adapters]
     Citizen --> Map[Attributed OpenStreetMap embed]
@@ -90,23 +91,27 @@ Important architecture choices:
 | Capability | Status | Notes |
 |---|---|---|
 | Protected guest lookup | Implemented | Server-issued expiring arithmetic check and documented synthetic identifiers |
-| Multi-account and multi-vehicle experience | Implemented | Two profiles, five vehicles and nine seeded challans |
-| Evidence, plate and event location | Implemented | Synthetic evidence plus attributed OpenStreetMap context |
-| Guided grievance and receipt | Implemented | Six structured reasons and a durable API-backed submission |
-| Reviewer queue and reasoned decision | Implemented | Human quash/reject flow with citizen-visible outcome |
+| Multi-account and multi-vehicle experience | Implemented | Three profiles, six vehicles and twenty account-linked challans, plus three distinct guest lookup cases |
+| Evidence, plate and event location | Implemented locally | Shared evidence passport with capture source, immutable-original/hash, crop lineage, registry comparison and attributed OpenStreetMap context |
+| Guided grievance and receipt | Implemented locally | Six server-owned issue contracts, versioned draft recovery, bounded evidence requests and contract-safe reasoned outcomes |
+| Authority operations foundation | Implemented locally | Aggregate queue summary, compact paginated worklist, lease-based case claim and human reasoned decision; batch/supervisor UI remains in progress |
+| Event-backed citizen tracking | Implemented locally | Account progress and case timelines are projected from persisted, versioned workflow events shared with authority actions |
+| Mobile, contrast and low-data access | Implemented locally | Compact 320/390 px controls, preserved native scrolling, optimized WebP media and explicit evidence/map loading |
 | Payment demonstration | Implemented as mock | No card, UPI ID, bank account, password or real OTP is collected |
+| SQLite/PostgreSQL repository boundary | Implemented locally | PostgreSQL migrations and atomic adapter exist; a live managed database has not yet been provisioned or verified |
 | Government, VAHAN and state-RTA connections | Mocked boundary | No undocumented or live government API is called |
 | English, Hindi and Telugu | Entry-flow pilot | Case and reviewer content still needs reviewed full-flow localization |
 | Real identity, uploads and payments | Planned | Requires authorized providers, contracts and production security controls |
-| Chatbot assistance | Deferred | Intentionally excluded from the first-round submission |
+| WhatsApp citizen channel | Outbound delivered; automated conversation pending | English/Hindi deterministic flow over the shared case store, durable inbox/outbox and delivery receipts, vehicle/evidence/plate/location messages, tracking, grievance guidance, payment history and one/few/all signed web handoffs. The developer resource authenticated and a labelled outbound message was visibly received by the configured test recipient; no automated inbound/outbound citizen conversation is claimed until the public callback and persisted delivery lifecycle are verified |
 
 ## Technology
 
 - **Web:** React 19, Vite 6 and native responsive CSS
 - **Icons:** Phosphor Icons
 - **API:** Fastify 5
-- **Persistence:** Node.js built-in SQLite for the local synthetic demo
+- **Persistence:** Node.js built-in SQLite for local/test use; `pg` and versioned PostgreSQL migrations for the deployment target
 - **Maps:** attributed OpenStreetMap embed and external fallback link
+- **Performance:** optimized WebP renditions and a persistent low-data mode that defers large media and map embeds
 - **Hosting package:** static client plus the included Sites worker handoff
 
 ## Run locally
@@ -131,6 +136,8 @@ npm run dev -- --host 127.0.0.1 --port 4173 --strictPort
 
 Open `http://127.0.0.1:4173/`.
 
+To exercise the PostgreSQL adapter, set `CHALLAN_NYAY_DATABASE_URL` and run `npm run db:migrate` from the repository root. Do not use the deployment target without also configuring unique challenge and session secrets from `.env.example`.
+
 Direct synthetic QA views are available at `/?demo=dashboard`, `/?demo=challans`, `/?demo=case`, `/?demo=services` and `/?demo=reviewer`.
 
 ## Verify the build
@@ -144,15 +151,18 @@ npm run test:sites
 npm run build
 ```
 
-Current verified baseline:
+Current locally verified baseline:
 
-- API tests: **7/7 passed**
+- API tests: **47 passed, 1 skipped** (the skipped test requires `CHALLAN_NYAY_TEST_DATABASE_URL` pointing to a real PostgreSQL instance)
 - static-hosting tests: **4/4 passed**
+- real-browser Playwright journeys: **12/12 passed** (citizen-to-authority decision/reset loop, browser Back/Forward routing, mobile low-data/high contrast, all three guest lookup routes, guest return-context integrity, distinct authority entry and direct route, authority evidence sizing, multi-profile persistence, serious/critical axe checks, WhatsApp-to-web grievance continuity, atomic pay-all continuity, and selected-challan payment continuity)
 - production web build: **passed**
-- desktop and 390 px mobile citizen flows: **verified locally**
-- clean browser session: **zero console errors and zero warnings**
+- SQLite atomic mutation, idempotency, stale-version, versioned draft recovery, issue-safe reviewer outcomes, file-backed restart isolation, concurrent-decision conflict and persisted channel replay: **passed**
+- live PostgreSQL migration, cross-instance durability and deployed-browser checks: **pending**
 
-These checks do not claim formal WCAG 2.2 AA certification. Formal assistive-technology, automated accessibility, slow-network and deployed HTTPS checks remain release acceptance work.
+These checks do not claim formal WCAG 2.2 AA certification. Full assistive-technology coverage, complete automated-rule coverage, slow-network and deployed HTTPS checks remain release acceptance work.
+
+Run the complete local gate with `npm run verify`. It writes a machine-readable, explicitly local-only report to `output/release-evidence/phase8-release-audit.json`.
 
 ## Accessibility and public-service safeguards
 
@@ -176,7 +186,7 @@ These checks do not claim formal WCAG 2.2 AA certification. Formal assistive-tec
 - [`DELIVERY/`](DELIVERY/): scope, acceptance criteria, tests and submission material
 - [`GOVERNANCE/`](GOVERNANCE/): decisions, content, data, licensing and third-party notices
 - [`apps/web/`](apps/web/): citizen and reviewer React application
-- [`apps/api/`](apps/api/): Fastify API, SQLite repository and domain tests
+- [`apps/api/`](apps/api/): Fastify API, SQLite/PostgreSQL repositories, migrations and domain/contract tests
 
 ## Sources
 

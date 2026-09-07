@@ -87,7 +87,14 @@ Adapters normalize state-specific schemas while the citizen UI remains consisten
 - API-backed seeded case, payment, contest, reviewer decision and audit timeline;
 - original synthetic enforcement frame plus derived synthetic plate crop;
 - capture-source and integrity metadata;
-- live attributed OpenStreetMap location embed and fallback link.
+- normalized source identity for fixed-camera and officer-mobile events, including adapter version and capture actor boundary;
+- immutable-original asset metadata plus derived plate-crop parent linkage;
+- server-computed evidence passport with plate match separated from vehicle type/colour comparison;
+- registry snapshot identity reused across account, case and authority views;
+- coordinate source, accuracy and approximate public-display policy;
+- live attributed OpenStreetMap location embed and fallback link;
+- hashed WebP browser renditions linked to the retained original;
+- persistent low-data behavior that defers hero, evidence, crop and map media without removing case facts or actions.
 
 ## Deferred until authorized integration exists
 

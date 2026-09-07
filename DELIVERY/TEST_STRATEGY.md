@@ -103,3 +103,12 @@ No public demo build if:
 
 Store test commands, summaries, screenshots, accessibility notes, AI-eval results, and deployment verification in a timestamped release evidence folder when implementation begins. Distinguish automated pass from manual verification.
 
+## Round-two local proof status — 6 September 2026
+
+- 44 API checks pass; the live PostgreSQL integration remains skipped until `CHALLAN_NYAY_TEST_DATABASE_URL` is supplied.
+- 4 static-hosting checks pass.
+- 7 Playwright browser checks pass: complete citizen/reviewer/reset loop, mobile low-data/high contrast, multi-profile persistence, representative serious/critical axe scans, a signed WhatsApp fixture handoff into the same web grievance, pay-all selection through atomic posting, and exact selected-challan payment continuity.
+- File-backed close/reopen isolation and simultaneous-decision conflict are automated API tests.
+- `npm run audit:release` records required-file, claim-truth, asset-budget, official-asset-name and common-secret-signature results under ignored `output/release-evidence/`.
+- Signed WhatsApp fixtures prove signature rejection, duplicate replay, restart-safe English/Hindi state, shared-case reads, issue guidance and one-time handoff. They do not prove live Meta inbound/outbound delivery.
+- Deployed HTTPS, managed-PostgreSQL cold start, screen-reader testing, live Meta delivery and public-link verification remain release-environment work and must not be inferred from this local evidence.

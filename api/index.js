@@ -1,10 +1,12 @@
 import { buildApp } from "../apps/api/src/app.js";
-import { ChallanRepository } from "../apps/api/src/database.js";
+import { createConfiguredRepository } from "../apps/api/src/repository-factory.js";
 
-// Vercel functions have ephemeral filesystems, so the public demo keeps its
-// synthetic state in memory. A cold start safely returns to the documented
-// seed cases.
-const repository = new ChallanRepository(":memory:");
+// Deployed functions must use managed PostgreSQL. The in-memory SQLite fallback
+// remains available only for local adapter tests where VERCEL is not set.
+const repository = createConfiguredRepository({
+  sqlitePath: ":memory:",
+  requirePostgres: process.env.VERCEL === "1" || process.env.CHALLAN_NYAY_REQUIRE_POSTGRES === "true",
+});
 const app = buildApp({ repository, logger: true });
 const ready = app.ready();
 

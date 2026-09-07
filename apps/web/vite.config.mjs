@@ -1,6 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+const apiTarget = process.env.CHALLAN_NYAY_API_TARGET || "http://127.0.0.1:8787";
+
 export default defineConfig({
   build: {
     outDir: "dist/client",
@@ -13,11 +15,11 @@ export default defineConfig({
     allowedHosts: ["terminal.local"],
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8787",
+        target: apiTarget,
         changeOrigin: true,
       },
       "/health": {
-        target: "http://127.0.0.1:8787",
+        target: apiTarget,
         changeOrigin: true,
       },
     },

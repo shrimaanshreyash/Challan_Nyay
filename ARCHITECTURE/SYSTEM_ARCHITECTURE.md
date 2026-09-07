@@ -4,64 +4,53 @@
 
 Build a **modular monolith with explicit external adapters**, not microservices. It is fast enough for the hackathon, simple to run, and still demonstrates credible national-scale boundaries.
 
-## Proposed implementation stack
+## Implemented stack and production target
 
-Versions will be pinned to current stable releases at implementation time and recorded in the lockfile.
+Installed versions are pinned in the lockfiles. A row marked as a target is an explicit production boundary, not a completed integration.
 
-| Layer | Choice | Reason |
+| Layer | Current choice | Status and reason |
 |---|---|---|
-| Web | Next.js App Router, React, TypeScript strict mode | Fast server-rendered shell, responsive routes, accessible React ecosystem, production-ready bundling |
-| Styling/UI | CSS variables/tokens, CSS Modules or Tailwind only if token-governed, Radix primitives selectively | Controlled visual language and accessible behavior without template appearance |
-| API | Fastify with TypeScript and JSON Schema-derived contracts | Explicit service boundary, high-performance validation/serialization, testable adapters |
-| Domain | Framework-free TypeScript modules | Legal clocks and transitions remain independently testable |
-| Database | PostgreSQL | Transactions, constraints, JSONB where justified, audit/query support, optional row-level security |
-| Evidence | S3-compatible object storage; local MinIO or filesystem adapter for development | Keeps files out of database and preserves provider portability |
-| Jobs | PostgreSQL-backed job/outbox worker | Avoids Redis complexity in the MVP while providing retries and durable events |
-| AI assist | OpenAI Responses API behind an `AiAssistGateway` | Image/file input and structured output; fully optional to core resolution |
-| Validation | Shared JSON Schema/TypeBox-style runtime contracts | One runtime and TypeScript source for API boundaries |
-| Tests | Vitest, Playwright, Testing Library, axe-core | Domain, contract, component, real-browser, and accessibility coverage |
-| Observability | structured logs, correlation IDs, OpenTelemetry on the server | Trace citizen submission through routing, review, and decision |
-| Local runtime | Node.js LTS, pnpm workspaces, Docker Compose for Postgres/object store | Reproducible contributor and judge setup |
+| Web | React 19 + Vite 6, JavaScript modules | Implemented: small static client, stable browser routes and accessible React components |
+| Styling/UI | Native CSS with semantic tokens and responsive media rules | Implemented: avoids runtime UI weight and keeps high contrast/low-data behavior explicit |
+| API | Fastify 5 + strict JSON Schema request contracts | Implemented: one testable service boundary with role and payload validation |
+| Domain | Framework-free JavaScript modules | Implemented: issue contracts, evidence passports, payments and workflow projections remain independently testable |
+| Database | SQLite adapter locally; PostgreSQL adapter and migrations for deployment | Implemented boundary; managed PostgreSQL and live durability proof remain pending |
+| Evidence | Synthetic files plus normalized source/original/derived metadata | Implemented for the demo; authorized object storage and ingest scanning are production targets |
+| Maps | Attributed OpenStreetMap embed and external link | Implemented demo context; a contracted provider is required for national production traffic |
+| AI assist | No model is required by the working path | Deliberately absent: no model decides, submits, pays or blocks the service |
+| Validation | Fastify JSON Schema plus domain validation | Implemented on every consequential route |
+| Tests | Node test runner + Playwright Test | Implemented: contract, repository, race/restart and real-browser lifecycle checks |
+| Observability | Fastify structured request logs and persisted correlation IDs | Implemented baseline; OpenTelemetry export remains a target |
+| Assisted channel | Deterministic WhatsApp state machine + Meta Cloud API adapter | Shared repository, durable outbox, delivery receipts and provider payloads are implemented. The developer phone resource authenticated locally; public webhook and real test-recipient proof remain pending |
+| Local runtime | Node.js 22 + npm workspaces by prefix | Implemented and documented without a Docker dependency |
 
-Primary documentation: [Next.js App Router](https://nextjs.org/docs/app), [Fastify validation](https://fastify.dev/docs/latest/Reference/Validation-and-Serialization/), [PostgreSQL](https://www.postgresql.org/docs/current/), and [OpenTelemetry JavaScript](https://opentelemetry.io/docs/languages/js/).
+Primary documentation: [React](https://react.dev/), [Vite](https://vite.dev/), [Fastify validation](https://fastify.dev/docs/latest/Reference/Validation-and-Serialization/), [PostgreSQL](https://www.postgresql.org/docs/current/), and [OpenTelemetry JavaScript](https://opentelemetry.io/docs/languages/js/).
 
-## Intended code layout after phase approval
+## Current code layout
 
 ```text
 apps/
   web/          citizen and reviewer interfaces
   api/          HTTP API and adapter composition
-  worker/       outbox, notifications, AI assist, reconciliation
-packages/
-  domain/       entities, transitions, clocks, policies
-  contracts/    runtime schemas and generated TS types
-  ui/           selected design tokens and components
-  config/       lint, TypeScript, test configuration
-fixtures/
-  cases/        fictional challans, documents, decisions
-infra/
-  local/        Docker Compose and seed commands
+api/            Vercel Fastify gateway
+ARCHITECTURE/   boundaries, data flow and deployment truth
+DELIVERY/       acceptance criteria, tests and submission controls
+GOVERNANCE/     decisions, data, safety and third-party records
+playwright.config.mjs
 ```
-
-This structure is planned only; it is not created during the documentation phase.
 
 ## Logical architecture
 
 ```text
-Citizen Web -----------+
-                       |
-Reviewer Web ----------+--> Fastify API --> Application services --> PostgreSQL
-                                           |       |                 + Outbox
-                                           |       +--> Evidence adapter --> Object store
-                                           +--> Domain rules
-                                           +--> Mock government/court/payment/identity adapters
-                                           +--> AI assist adapter (optional)
-
-Worker <-------------------- PostgreSQL outbox/jobs
-  +--> mock notifications
-  +--> AI extraction/summarization
-  +--> payment reconciliation simulation
-  +--> deadline and queue events
+Citizen + authority React client
+WhatsApp fixture or Meta webhook -> HMAC boundary -> inbox/conversation/outbox -> Meta sender
+  -> Fastify JSON-schema routes
+       -> session/role boundary
+       -> issue, payment and workflow domain services
+       -> repository contract
+            -> SQLite local/test adapter
+            -> PostgreSQL deployment adapter
+       -> normalized evidence/map/provider boundaries
 ```
 
 ## Application modules
@@ -71,33 +60,33 @@ Worker <-------------------- PostgreSQL outbox/jobs
 - **Rules:** effective-dated clocks, jurisdiction capabilities, eligibility guidance.
 - **Review:** queue, assignment, request for information, reasoned decision.
 - **Payment:** attempt ledger and reconciliation; never mixed with contest state.
-- **Handoff:** court/RTO destination and acknowledgement.
-- **Evidence:** validation, storage, metadata, scan state, retention.
-- **AI assist:** extraction, suggested categorization, translation draft, reviewer summary.
+- **Handoff:** configured court/RTO destination and status boundary.
+- **Evidence:** normalized source, retained-original metadata, derived lineage and map provenance.
+- **AI assist:** explicitly optional and not implemented in the consequential path.
 - **Audit:** append-only consequential events and receipts.
 - **Content:** versioned plain-language and translations.
 - **Operations:** SLA, queue ageing, quality and exception measures.
+- **Channel:** pseudonymous sender mapping, deterministic commands, event replay, outbox and one-time web continuity; never a second case database.
 
 ## Data flow — contest submission
 
 1. Web sends draft version, confirmed facts, evidence references, declaration, and an idempotency key.
 2. API validates schemas, role, ownership, evidence state, current case version, and legal transition.
-3. One database transaction creates the submission, state event, review task, audit event, and outbox event.
-4. API returns a durable receipt immediately; it does not wait for AI or a notification.
-5. Worker processes the outbox, creates optional AI summary, and sends a mocked notification.
-6. Reviewer reads only confirmed citizen fields and source-linked AI assistance.
+3. One repository transaction advances the case version, appends workflow/audit events, records the idempotent response and clears any recovered draft.
+4. The authority queue projects its task from the same persisted case/workflow state; it does not use a separate mock inbox.
+5. The API returns the committed receipt and citizen tracker state immediately.
+6. A human reviewer reads the same issue packet and evidence passport and records one contract-allowed outcome.
 
 ## Reliability patterns
 
 - optimistic concurrency version on mutable aggregates;
 - idempotency keys for submit, decide, pay, reconcile, and upload-finalize actions;
-- transactional outbox for external effects;
-- explicit retry/dead-letter state with operations visibility;
+- atomic case, workflow, audit and idempotency writes;
+- provider adapters reserved for later retry/dead-letter delivery work;
 - time stored in UTC and rendered with jurisdiction/user context;
 - rule and content versions attached to the case event;
 - graceful core flow when AI, notifications, or analytics are unavailable.
 
 ## Deployment shape
 
-For the hackathon: one public web service, one API/worker deployment, managed PostgreSQL, and S3-compatible storage. Seeded public demo access uses synthetic cases and a clearly displayed reviewer-demo entry. Keep a local Docker-based fallback and a recorded video. Provider selection is deferred until deployment is explicitly authorized.
-
+The current public deployment is intentionally paused while round-two hardening remains local. The release target is one static Vite client, one Fastify serverless gateway and one managed PostgreSQL database. Seeded access uses isolated synthetic sessions and a separately authenticated reviewer workspace. The local SQLite path remains the deterministic fallback; managed-database and deployed cold-start proof are required before the public URL is re-enabled.

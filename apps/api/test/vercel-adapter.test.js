@@ -15,7 +15,12 @@ test("Vercel gateway restores the original nested API path", async (t) => {
   );
 
   await app.ready();
-  const response = await app.inject({ method: "GET", url: request.url });
+  const session = await app.inject({ method: "POST", url: "/api/demo/sessions", payload: {} });
+  const response = await app.inject({
+    method: "GET",
+    url: request.url,
+    headers: { authorization: `Bearer ${session.json().token}` },
+  });
   assert.equal(response.statusCode, 200);
   assert.match(response.headers["content-type"], /application\/json/);
   assert.match(response.json().challenge.prompt, /^\d+ \+ \d+$/);

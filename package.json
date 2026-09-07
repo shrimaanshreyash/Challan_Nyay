@@ -8,9 +8,19 @@
   },
   "scripts": {
     "build": "npm run build --prefix apps/web",
-    "test": "npm test --prefix apps/api && npm run test:sites --prefix apps/web"
+    "db:migrate": "npm run migrate:postgres --prefix apps/api",
+    "test": "npm test --prefix apps/api && npm run test:sites --prefix apps/web",
+    "test:e2e": "playwright test",
+    "audit:release": "node scripts/release-audit.mjs",
+    "demo:whatsapp": "node scripts/whatsapp-fixture-demo.mjs",
+    "verify": "npm test && npm run build && npm run test:e2e && npm run audit:release"
   },
   "dependencies": {
-    "fastify": "5.12.1"
+    "fastify": "5.12.1",
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0"
   }
 }
