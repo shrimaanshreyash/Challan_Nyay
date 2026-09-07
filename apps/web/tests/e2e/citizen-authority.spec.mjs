@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { createHmac } from "node:crypto";
+import { readFile } from "node:fs/promises";
 
 const FLAGSHIP_CASE = "CN-DEMO-WRONG-VEHICLE";
 const WHATSAPP_FIXTURE_SECRET = "challan-nyay-synthetic-whatsapp-app-secret-v1";
@@ -188,6 +189,44 @@ test("browser Back and Forward stay synchronized with citizen routes", async ({ 
   await expect(page.getByRole("heading", { name: "Find your challan" })).toBeVisible();
 });
 
+test("Hindi and Telugu persist across citizen, case and authority routes", async ({ page }) => {
+  test.setTimeout(60_000);
+  const languageSelect = () => page.locator(".language-control select:visible");
+
+  await page.goto("/");
+  await languageSelect().selectOption("hi");
+  await expect(page).toHaveTitle("चालान न्याय — कृत्रिम डेमो");
+  await expect(page.getByRole("heading", { name: "अपना चालान समझें। सही अगला कदम चुनें।" })).toBeVisible();
+
+  await page.goto("/services");
+  await expect(page.getByRole("heading", { name: "चालान के समाधान के लिए आवश्यक सभी सुविधाएँ।" })).toBeVisible();
+  await page.reload();
+  await expect(languageSelect()).toHaveValue("hi");
+
+  await page.goto(`/challans/${FLAGSHIP_CASE}`);
+  await expect(page.getByRole("heading", { name: "साक्ष्य में वाहन का संभावित अंतर" })).toBeVisible();
+  await page.getByRole("button", { name: "इस चालान पर आपत्ति करें" }).click();
+  await expect(page.getByRole("heading", { name: "आपत्ति दर्ज करें" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "समीक्षक को क्या जानना चाहिए?" })).toHaveValue(/कैमरे ने मेरी पंजीकृत प्लेट/);
+  await page.getByRole("button", { name: "संवाद बंद करें" }).click();
+
+  await page.goto("/authority");
+  await expect(page.getByRole("heading", { name: "समीक्षक साइन इन" })).toBeVisible();
+  await languageSelect().selectOption("te");
+  await expect(page).toHaveTitle("చలాన్ న్యాయ్ — కృత్రిమ డెమో");
+  await expect(page.getByRole("heading", { name: "సమీక్షకుల సైన్ ఇన్" })).toBeVisible();
+
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "మీ చలాన్‌ను అర్థం చేసుకోండి. సరైన తదుపరి చర్య తీసుకోండి." })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.evaluate(() => document.documentElement.scrollWidth)).resolves.toBe(390);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await languageSelect().selectOption("en");
+  await expect(page).toHaveTitle("Challan Nyay — Synthetic Demo");
+  await expect(page.getByRole("heading", { name: "Understand your challan. Move forward with clarity." })).toBeVisible();
+});
+
 test("authority workspace is distinct and browser Back returns to the citizen page", async ({ page }) => {
   await page.goto("/");
   const authorityEntry = page.getByRole("button", { name: "Authority workspace" });
@@ -293,11 +332,14 @@ test("WhatsApp pay-all handoff reviews and posts every selected challan atomical
   await page.getByRole("checkbox", { name: /synthetic batch payment/ }).check();
   await page.getByRole("button", { name: "Post 2 demo payments" }).click();
   await expect(page.getByRole("heading", { name: "Payment recorded in this demonstration" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Download receipt" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download PDF receipt" })).toBeVisible();
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download receipt" }).click();
+  await page.getByRole("button", { name: "Download PDF receipt" }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/^CN-PAY-RCPT-.*\.json$/);
+  expect(download.suggestedFilename()).toMatch(/^CN-PAY-RCPT-.*\.pdf$/);
+  const downloadedBytes = await readFile(await download.path());
+  expect(downloadedBytes.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+  expect(downloadedBytes.length).toBeGreaterThan(2_500);
 });
 
 test("WhatsApp selected-payment handoff preserves only the citizen's chosen challans", async ({ page, request }) => {

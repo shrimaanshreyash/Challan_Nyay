@@ -30,5 +30,6 @@ When implementing from a selected generated mock, treat that image as the source
 - Treat high contrast as a complete semantic-token theme. Never fix it through isolated black/white/yellow selector overrides that create text/background collisions or disconnected bands.
 - The five-step mobile journey needs a finished connected hierarchy, not five visually identical numbered circles. Preserve the same service meaning while varying emphasis and ending in a clear receipt/final-order outcome.
 - Visible scrollbar chrome may be hidden, but document, panel, modal, keyboard, touch and assistive scrolling must remain fully operable.
+- English, Hindi and Telugu are full-site languages, not gateway-only decoration. New citizen or reviewer copy must include reviewed local translations for visible text, form values, labels and accessible names; preserve IDs, registrations, hashes and proper names exactly.
 
 Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts/prepare-sites-build.mjs`, and `tests/sites-worker.test.mjs` intact so the same local prototype can be handed to Sites. Before a Sites handoff, run `npm run build` and `npm run test:sites`; the build must leave `dist/client/index.html`, `dist/server/index.js`, and `dist/.openai/hosting.json`.

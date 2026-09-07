@@ -351,3 +351,19 @@ Record material choices here. Statuses: `Proposed`, `Accepted`, `Superseded`.
 - Decision: After a citizen selects one, several or all eligible challans in WhatsApp, show an explicit review checkpoint and a choice of familiar UPI-app labels before creating the one-time signed web handoff. The selected route is carried into the web review, persisted on the synthetic payment and printed on the downloadable receipt.
 - Why: Reopening the selection list after every choice looked like a loop and did not give the citizen a clear next action. A recognizable route choice makes the prototype easy to explain without collecting a UPI ID, PIN, OTP or financial credential.
 - Consequence: Google Pay, PhonePe, Paytm and Other UPI are interface labels for a mock adapter only. No native app is invoked, no Razorpay credential is used, and no real payment occurs in this competition build.
+
+## D-046 — Site languages use reviewed local dictionaries across every workflow
+
+- Status: Accepted
+- Date: 7 September 2026
+- Decision: Use i18next with bundled English, Hindi and Telugu resources for the complete citizen and reviewer experience, including dynamically rendered API states, dialogs, labels, accessible names and locale-aware dates. Record identifiers, registrations, hashes and proper names remain unchanged.
+- Why: Translating only the landing gateway makes the selector misleading and leaves the actual challan, payment, grievance and authority work inaccessible. An automatic hosted page translator would also introduce privacy, reliability and civic-wording risks.
+- Consequence: Language selection persists across stable routes and reloads, restores English without stale translated nodes, and is exercised in desktop and 390 px browser regression tests. New user-facing copy requires reviewed Hindi and Telugu entries before release.
+
+## D-047 — Payment receipts are designed PDF records, not developer data dumps
+
+- Status: Accepted
+- Date: 7 September 2026
+- Decision: Generate the citizen's downloadable payment receipt as a one-page PDF from the payment and challan records already returned by the API. Include the mock route, provider result, challan-ledger result, immutable receipt/attempt references and case context, with an unmistakable synthetic-demo notice.
+- Why: A JSON payload is useful for debugging but is not a readable or presentable citizen receipt. A PDF is portable, printable and suitable for the judged workflow without adding another server-side persistence path.
+- Consequence: `pdf-lib` is lazy-loaded only when the citizen requests the file, the main application bundle does not absorb the PDF engine, and the browser test verifies both the `.pdf` filename and `%PDF-` file signature. The receipt remains an English operational record until reviewed Indian-script fonts are embedded; the surrounding download state is localized.

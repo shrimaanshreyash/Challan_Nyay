@@ -5,6 +5,9 @@ Record exact versions, licences, source URLs, and modification notes before rele
 | Item | Category | Intended use | Source | Licence | Version/status | Action |
 |---|---|---|---|---|---|---|
 | React + React DOM | Library | UI | https://react.dev/ | MIT | 19.2.0 installed | Include licence in release bundle |
+| i18next | Library | Local translation resources, fallback and locale switching | https://www.i18next.com/ | MIT | 25.5.2 installed | All Hindi/Telugu copy is bundled locally; no hosted translation service receives page content |
+| react-i18next | Library | React integration for i18next | https://react.i18next.com/ | MIT | 16.2.4 installed | Keep language state synchronized with the accessible site selector |
+| pdf-lib | Library | Generate downloadable synthetic payment receipts as client-side PDF files | https://pdf-lib.js.org/ | MIT | 1.17.1 installed | Lazy-load only when a receipt is requested; PDF contains synthetic case data only |
 | Vite | Build tool | Web application | https://vite.dev/ | MIT | 6.4.2 installed | Include licence in release bundle |
 | @vitejs/plugin-react | Build plugin | React transform | https://github.com/vitejs/vite-plugin-react | MIT | 5.0.4 installed | Include licence in release bundle |
 | Fastify | Framework | API | https://fastify.dev/ | MIT | 5.12.1 installed | Include licence in release bundle |

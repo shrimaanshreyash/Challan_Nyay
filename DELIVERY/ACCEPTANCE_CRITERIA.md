@@ -86,7 +86,7 @@ Given a fresh visit, when a citizen selects challan, vehicle, or DL lookup, then
 
 ## AC-22 — language and accessible shell
 
-The entry supports working English, Hindi, and Telugu selection with Unicode; skip navigation, text controls, high contrast, semantic headings, labelled fields, keyboard focus, and responsive reflow. It is labelled as a pilot, not complete 22-language coverage.
+The complete citizen and reviewer experience supports working English, Hindi, and Telugu selection with Unicode, locale-aware dates, translated accessible names and persistent route/reload behavior. Record identifiers, registrations, hashes and proper names remain unchanged. Skip navigation, text controls, high contrast, semantic headings, labelled fields, keyboard focus, and responsive reflow continue to work in every language. This is three-language support, not a claim of complete Indian-language coverage.
 
 ## AC-23 — mock payment integrity
 
@@ -286,4 +286,4 @@ Given a citizen opens a guest vehicle, challan-number or driving-licence result,
 
 ## AC-72 — assisted payment selection and receipt continuity
 
-Given a verified WhatsApp citizen selects one, several or all eligible challans, then each toggle leads to a visible Review and pay checkpoint instead of reopening the same list. Before handoff, the citizen chooses a clearly synthetic UPI-app route; the one-time web review opens with that route selected, commits through the same atomic payment service, and exposes a downloadable synthetic receipt containing the route, provider and challan-ledger states.
+Given a verified WhatsApp citizen selects one, several or all eligible challans, then each toggle leads to a visible Review and pay checkpoint instead of reopening the same list. Before handoff, the citizen chooses a clearly synthetic UPI-app route; the one-time web review opens with that route selected, commits through the same atomic payment service, and exposes a designed downloadable PDF receipt containing the route, provider and challan-ledger states. The downloaded file must identify itself as synthetic, open as a valid PDF and never contain a financial credential.

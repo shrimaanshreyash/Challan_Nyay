@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { localeForLanguage, observeLocalizedDocument } from "./i18n.js";
+import { createPaymentReceiptPdf } from "./receipt-pdf.js";
 import {
   ArrowLeft,
   ArrowRight,
@@ -285,14 +288,16 @@ async function createReviewerSession(accessCode) {
   return body;
 }
 
+let activeFormattingLanguage = "en";
+
 const formatMoney = (paise) =>
-  new Intl.NumberFormat("en-IN", {
+  new Intl.NumberFormat(localeForLanguage(activeFormattingLanguage), {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(paise / 100);
 const formatDate = (value, includeTime = false) =>
-  new Intl.DateTimeFormat("en-IN", {
+  new Intl.DateTimeFormat(localeForLanguage(activeFormattingLanguage), {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -760,7 +765,7 @@ function CitizenGateway({ language, onFound, lowData }) {
         </div>
         <div>
           <Globe size={24} />
-          <span><strong>Language pilot</strong><small>English, Hindi and Telugu entry</small></span>
+          <span><strong>Language support</strong><small>English, Hindi and Telugu across the full site</small></span>
         </div>
         <div>
           <Headphones size={24} />
@@ -1813,6 +1818,7 @@ function CitizenCase({ caseRecord, auditCount, onContest, onPay, onBack, backLab
   const [responding, setResponding] = useState(false);
   const [responseError, setResponseError] = useState("");
   const [mediaRequested, setMediaRequested] = useState(false);
+  const [receiptDownloadState, setReceiptDownloadState] = useState("idle");
   const primaryEvidence = caseRecord.evidence[0];
   const mapLocation = primaryEvidence.location || {
     latitude: 17.36887,
@@ -1847,28 +1853,28 @@ function CitizenCase({ caseRecord, auditCount, onContest, onPay, onBack, backLab
   const closed = decided || paid;
   const contestGround = caseRecord.contest?.ground;
   const tracking = caseRecord.tracking || null;
-  function downloadReceipt() {
-    const receipt = {
-      synthetic: true,
-      service: "Challan Nyay independent prototype",
-      receiptId: caseRecord.payment.receiptId,
-      caseId: caseRecord.id,
-      vehicle: caseRecord.registeredVehicle.registration,
-      amountPaise: caseRecord.payment.amountPaise,
-      paymentRoute: paymentMethodLabel(caseRecord.payment),
-      providerStatus: caseRecord.payment.providerStatus,
-      ledgerStatus: caseRecord.payment.ledgerStatus,
-      providerReference: caseRecord.payment.providerReference,
-      paidAt: caseRecord.payment.paidAt,
-      notice: "Synthetic demonstration receipt. No real payment occurred.",
-    };
-    const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${caseRecord.payment.receiptId}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+  async function downloadReceipt() {
+    setReceiptDownloadState("preparing");
+    try {
+      const bytes = await createPaymentReceiptPdf({
+        caseRecord,
+        paymentRoute: paymentMethodLabel(caseRecord.payment),
+      });
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${caseRecord.payment.receiptId}.pdf`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setReceiptDownloadState("complete");
+      window.setTimeout(() => setReceiptDownloadState("idle"), 2500);
+    } catch (error) {
+      console.error("Synthetic receipt PDF generation failed", error);
+      setReceiptDownloadState("error");
+    }
   }
   async function respondToReviewer(event) {
     event.preventDefault();
@@ -2118,9 +2124,15 @@ function CitizenCase({ caseRecord, auditCount, onContest, onPay, onBack, backLab
                   {formatDate(caseRecord.payment.paidAt, true)}
                 </small>
               </div>
-              <button className="button secondary compact-button receipt-download" type="button" onClick={downloadReceipt}>
-                <DownloadSimple size={17} /> Download receipt
+              <button
+                className="button secondary compact-button receipt-download"
+                type="button"
+                onClick={downloadReceipt}
+                disabled={receiptDownloadState === "preparing"}
+              >
+                <DownloadSimple size={17} /> {receiptDownloadState === "preparing" ? "Preparing PDF…" : receiptDownloadState === "complete" ? "PDF downloaded" : "Download PDF receipt"}
               </button>
+              {receiptDownloadState === "error" && <small className="form-error" role="alert">The PDF could not be created. Please try again.</small>}
             </section>
           )}
           <section className="panel timeline-panel">
@@ -2729,6 +2741,8 @@ function ReviewerDesk({ onCaseChanged, onReset, lowData }) {
 }
 
 export function App() {
+  const { i18n } = useTranslation();
+  const appRootRef = useRef(null);
   const [section, setSection] = useState(() => {
     if (typeof window === "undefined") return "gateway";
     if (window.location.pathname.startsWith("/authority")) return "reviewer";
@@ -2764,12 +2778,19 @@ export function App() {
     ),
   );
   const [language, setLanguage] = useState(() => typeof window !== "undefined" ? window.localStorage.getItem("challan-nyay-language") || "en" : "en");
+  activeFormattingLanguage = language;
   const [fontScale, setFontScale] = useState(() => typeof window !== "undefined" ? Number(window.localStorage.getItem("challan-nyay-font-scale")) || 1 : 1);
   const [highContrast, setHighContrast] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("challan-nyay-contrast") === "true");
   const [lowData, setLowData] = useState(() => typeof window !== "undefined" && (
     window.localStorage.getItem("challan-nyay-low-data") === "true" || navigator.connection?.saveData === true
   ));
   const entryInitialized = useRef(false);
+  useEffect(() => {
+    void i18n.changeLanguage(language);
+    document.documentElement.lang = language;
+    document.title = i18n.getFixedT(language)("Challan Nyay — Synthetic Demo");
+    return observeLocalizedDocument(appRootRef.current, language);
+  }, [i18n, language]);
   useEffect(() => {
     const currentState = window.history.state || {};
     if (!currentState.challanNyayRoute) {
@@ -3036,6 +3057,7 @@ export function App() {
   }
   return (
     <div
+      ref={appRootRef}
       className={`app ${highContrast ? "high-contrast" : ""} ${lowData ? "low-data" : ""}`}
       style={{ "--font-scale": fontScale }}
     >
@@ -3119,7 +3141,7 @@ export function App() {
       <footer>
         <div className="shell">
           <span>Challan Nyay · independent competition prototype</span>
-          <span>English · हिन्दी · తెలుగు entry-flow pilot</span>
+          <span>English · हिन्दी · తెలుగు full-site language support</span>
           <span>
             <Headphones size={15} /> Keyboard and screen-reader structured
           </span>

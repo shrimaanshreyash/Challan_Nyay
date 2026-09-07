@@ -98,16 +98,16 @@ Important architecture choices:
 | Authority operations foundation | Deployed synthetic workspace | Aggregate queue summary, compact paginated worklist, bounded reviewer batches, lease-based claim and human reasoned decision |
 | Event-backed citizen tracking | Deployed | Account progress and case timelines are projected from persisted, versioned workflow events shared with authority actions |
 | Mobile, contrast and low-data access | Deployed | Compact 320/390 px controls, preserved native scrolling, optimized WebP media and explicit evidence/map loading |
-| Payment demonstration | Deployed mock | One/few/all selection, explicit mock UPI-app choice, atomic posting and downloadable synthetic receipts; no card, UPI ID, bank account, password or real OTP is collected |
+| Payment demonstration | Deployed mock | One/few/all selection, explicit mock UPI-app choice, atomic posting and a designed downloadable PDF receipt; no card, UPI ID, bank account, password or real OTP is collected |
 | SQLite/PostgreSQL repository boundary | Deployed | SQLite remains the local/test adapter; the public Vercel build selects the managed PostgreSQL adapter |
 | Government, VAHAN and state-RTA connections | Mocked boundary | No undocumented or live government API is called |
-| English, Hindi and Telugu | Entry-flow pilot | Case and reviewer content still needs reviewed full-flow localization |
+| English, Hindi and Telugu | Implemented | Reviewed local dictionaries cover citizen lookup, account, challan, evidence, grievance, mock payment and authority workflows; identifiers and proper names remain unchanged |
 | Real identity, uploads and payments | Planned | Requires authorized providers, contracts and production security controls |
 | WhatsApp citizen channel | Live developer pilot + automated contract proof | The public Meta callback answers live inbound `Hi` with English/Hindi selection. Deterministic tests cover protected lookup, same-store case/media/location views, tracking, grievance guidance, receipts, and one/few/all payment handoffs with mock UPI-app selection. A production WhatsApp number, native WhatsApp payment and unrestricted recipients are not claimed |
 
 ## Technology
 
-- **Web:** React 19, Vite 6 and native responsive CSS
+- **Web:** React 19, Vite 6, i18next/react-i18next and native responsive CSS
 - **Icons:** Phosphor Icons
 - **API:** Fastify 5
 - **Persistence:** Node.js built-in SQLite for local/test use; `pg` and versioned PostgreSQL migrations for the deployment target
