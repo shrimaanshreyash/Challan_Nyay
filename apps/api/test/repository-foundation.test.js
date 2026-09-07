@@ -62,6 +62,38 @@ test("PostgreSQL migration contains the production isolation and operations foun
   assert.match(sql, /case_assignments_reviewer_idx/);
 });
 
+test("PostgreSQL authority worklists bind only parameters used by each view", async () => {
+  const calls = [];
+  const fakePool = {
+    async query(sql, parameters) {
+      calls.push({ sql, parameters });
+      return { rows: [] };
+    },
+  };
+  const repository = new PostgresChallanRepository({ pool: fakePool });
+  repository.initialization = Promise.resolve();
+  const workspaceSessionId = randomUUID();
+  const reviewerSessionId = randomUUID();
+
+  await repository.listAuthorityWorkItems(workspaceSessionId, {
+    view: "OPEN",
+    reviewerSessionId,
+    limit: 12,
+  });
+  assert.deepEqual(calls[0].parameters, [workspaceSessionId, 13]);
+  assert.match(calls[0].sql, /LIMIT \$2/);
+  assert.doesNotMatch(calls[0].sql, /\$3/);
+
+  await repository.listAuthorityWorkItems(workspaceSessionId, {
+    view: "MY_BATCH",
+    reviewerSessionId,
+    limit: 12,
+  });
+  assert.deepEqual(calls[1].parameters, [workspaceSessionId, reviewerSessionId, 13]);
+  assert.match(calls[1].sql, /reviewer_session_id = \$2::uuid/);
+  assert.match(calls[1].sql, /LIMIT \$3/);
+});
+
 test("SQLite contract commits case, workflow event and idempotency response atomically", () => {
   const repository = new ChallanRepository(":memory:");
   const sessionId = randomUUID();

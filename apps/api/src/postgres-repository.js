@@ -416,21 +416,25 @@ export class PostgresChallanRepository {
   async listAuthorityWorkItems(sessionId, { view = "OPEN", reviewerSessionId = null, limit = 25, cursor = null } = {}) {
     await this.initialize();
     const boundedLimit = Math.min(Math.max(Number(limit) || 25, 1), 50);
-    const parameters = [sessionId, reviewerSessionId];
+    const parameters = [sessionId];
     const conditions = ["sc.session_id = $1"];
     const active = "sc.state IN ('CONTEST_SUBMITTED','UNDER_REVIEW','INFORMATION_REQUESTED','CITIZEN_SUPPLEMENTED')";
     const viewConditions = {
       OPEN: active,
       NEW: "sc.state = 'CONTEST_SUBMITTED'",
       UNASSIGNED: `${active} AND ca.reviewer_session_id IS NULL`,
-      MY_BATCH: `${active} AND ca.reviewer_session_id = $2`,
       WAITING_FOR_CITIZEN: "sc.state = 'INFORMATION_REQUESTED'",
       UNDER_REVIEW: "sc.state IN ('UNDER_REVIEW','CITIZEN_SUPPLEMENTED')",
       DUE_TODAY: `${active} AND NULLIF(sc.payload->>'reviewDeadline','')::timestamptz >= NOW() AND NULLIF(sc.payload->>'reviewDeadline','')::timestamptz < date_trunc('day', NOW()) + INTERVAL '1 day'`,
       ESCALATED: `${active} AND NULLIF(sc.payload->>'reviewDeadline','')::timestamptz < NOW()`,
       RESOLVED: "sc.state IN ('QUASHED','REJECTED','PAID')",
     };
-    conditions.push(viewConditions[view] || viewConditions.OPEN);
+    if (view === "MY_BATCH") {
+      parameters.push(reviewerSessionId);
+      conditions.push(`${active} AND ca.reviewer_session_id = $${parameters.length}::uuid`);
+    } else {
+      conditions.push(viewConditions[view] || viewConditions.OPEN);
+    }
     const decodedCursor = decodeWorklistCursor(cursor);
     if (decodedCursor) {
       parameters.push(decodedCursor.updatedAt, decodedCursor.id);
